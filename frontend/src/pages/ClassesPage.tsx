@@ -1,0 +1,210 @@
+import { useEffect, useState } from "react";
+import Sidebar from "../components/Sidebar";
+import http from "../api/http";
+import endPoints from "../api/endpoints";
+
+const ClassesPage = () => {
+  const [classes, setClasses] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(
+    null,
+  );
+
+  const [loading, setLoading] = useState(true);
+
+  const [showModal, setShowModal] = useState(false);
+  const [className, setClassName] = useState("");
+
+  const getClasses = async () => {
+    const res = await http.get(endPoints.classes.getAll);
+    setClasses(res.data.data || res.data);
+    setLoading(false);
+  };
+
+  const getSections = async (classId: number) => {
+    const res = await http.get(endPoints.sections.getAll, {
+      params: { class_id: classId },
+    });
+    setSections(res.data.data || res.data);
+  };
+
+  const getStudents = async (classId: number, sectionId: number) => {
+    const res = await http.get(endPoints.students.getAllBySection, {
+      params: {
+        classId: classId,
+        sectionId: sectionId,
+      },
+    });
+    setStudents(res.data.students);
+  };
+
+  useEffect(() => {
+    getClasses();
+  }, []);
+
+  const handleClassClick = async (classId: number) => {
+    setSelectedClassId(classId);
+    setSelectedSectionId(null);
+    setStudents([]);
+    await getSections(classId);
+  };
+
+  const handleSectionClick = async (sectionId: number) => {
+    if (!selectedClassId) return;
+    setSelectedSectionId(sectionId);
+    await getStudents(selectedClassId, sectionId);
+  };
+
+  const handleAddClass = async () => {
+    if (!className.trim()) {
+      alert("Class name is required");
+      return;
+    }
+
+    try {
+      await http.post(endPoints.classes.create, {
+        class_name: className,
+      });
+
+      setShowModal(false);
+      setClassName("");
+      getClasses();
+    } catch (err: any) {
+      console.error("Error adding class:", err);
+      alert(err.response?.data?.message || "Failed to add class");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex bg-gray-100">
+      <Sidebar />
+
+      <div className="flex-1 p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Classes</h1>
+
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+          >
+            + Add Class
+          </button>
+        </div>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {classes.map((cls) => (
+              <div
+                key={cls.id}
+                onClick={() => handleClassClick(cls.id)}
+                className={`p-5 rounded-xl cursor-pointer shadow-md transition 
+                ${
+                  selectedClassId === cls.id
+                    ? "bg-blue-500 text-white"
+                    : "bg-white hover:bg-blue-50"
+                }`}
+              >
+                <h2 className="text-lg font-semibold text-center">
+                  {cls.class_name}
+                </h2>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {selectedClassId && (
+          <div className="mt-8 bg-white p-5 rounded-xl shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Sections</h2>
+
+            {sections.length === 0 ? (
+              <p>No sections available</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {sections.map((sec) => (
+                  <div
+                    key={sec.id}
+                    onClick={() => handleSectionClick(sec.id)}
+                    className={`px-4 py-2 rounded-lg cursor-pointer transition 
+                    ${
+                      selectedSectionId === sec.id
+                        ? "bg-green-500 text-white"
+                        : "bg-green-100 hover:bg-green-200"
+                    }`}
+                  >
+                    Section {sec.section_name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedSectionId && (
+          <div className="mt-8 bg-white p-5 rounded-xl shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Students</h2>
+
+            {students.length === 0 ? (
+              <p>No students found</p>
+            ) : (
+              <table className="w-full border rounded-lg overflow-hidden">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="p-2 text-left">Name</th>
+                    <th className="p-2 text-left">Age</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {students.map((stu: any) => (
+                    <tr key={stu.id} className="border-t">
+                      <td className="p-2">{stu.name}</td>
+                      <td className="p-2">{stu.age}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
+            <div className="bg-white p-6 rounded-xl shadow-lg w-80">
+              <h2 className="font-bold mb-3 text-lg">Add Class</h2>
+
+              <input
+                value={className}
+                onChange={(e) => setClassName(e.target.value)}
+                placeholder="Enter class name"
+                className="w-full border p-2 mb-3 rounded"
+              />
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-3 py-1 bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleAddClass}
+                  className="px-3 py-1 bg-blue-500 text-white rounded"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ClassesPage;
