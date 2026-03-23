@@ -14,8 +14,6 @@ export const createTables = async () => {
   console.log("Tables created");
 };
 
-
-
 export const createClassesTable = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS classes (
@@ -52,8 +50,7 @@ export const createStudentsTable = async () => {
       section_id INT,
       FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
       FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
-    );
-  `);
+    );`);
 
   console.log("Students table created");
 };
