@@ -31,7 +31,7 @@ export const createSectionsTable = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS sections (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      section_name ENUM('A','B','C'),
+      section_name varchar(50) NOT NULL,
       class_id INT,
       class_teacher_id INT,
       FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,

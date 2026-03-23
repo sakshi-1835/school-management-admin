@@ -6,37 +6,60 @@ const studentService = {
   async addStudent(body: IStudent): Promise<IApiResponse> {
     try {
       const { name, age, class_id } = body;
+      const MAX_STUDENTS = 10;
 
       const [sections]: any = await db.query(
-        `SELECT s.id, COUNT(st.id) as total FROM sections s
-         LEFT JOIN students st ON s.id = st.section_id
-         WHERE s.class_id = ?
-         GROUP BY s.id
-         HAVING total < 30
-         ORDER BY total ASC
-         LIMIT 1`,
-        [class_id],
+        `SELECT s.id, s.section_name, COUNT(st.id) as total FROM sections s
+          LEFT JOIN students st ON s.id = st.section_id
+          WHERE s.class_id = ?
+          GROUP BY s.id
+          HAVING total < ?
+          ORDER BY total ASC
+          LIMIT 1`,
+        [class_id, MAX_STUDENTS],
       );
 
+      let section_id: number;
+
       if (sections.length === 0) {
-        return {
-          status: StatusCodes.CONFLICT,
-          message: "No available sections in this class",
-        };
+        const [allSections]: any = await db.query(
+          `SELECT section_name FROM sections 
+         WHERE class_id = ? 
+         ORDER BY section_name DESC 
+         LIMIT 1`,
+          [class_id],
+        );
+
+        let newSectionName = "A";
+
+        if (allSections.length > 0) {
+          const lastSection = allSections[0].section_name;
+          newSectionName = String.fromCharCode(lastSection.charCodeAt(0) + 1);
+        }
+
+        const [newSection]: any = await db.query(
+          `INSERT INTO sections (section_name, class_id) VALUES (?, ?)`,
+          [newSectionName, class_id],
+        );
+
+        section_id = newSection.insertId;
+      } else {
+        section_id = sections[0].id;
       }
 
-      const section_id = sections[0].id;
-
       const [insertResult]: any = await db.query(
-        "INSERT INTO students (name, age, class_id, section_id) VALUES (?, ?, ?, ?)",
+        `INSERT INTO students (name, age, class_id, section_id) 
+       VALUES (?, ?, ?, ?)`,
         [name, age, class_id, section_id],
       );
 
       const [student]: any = await db.query(
-        `SELECT st.id,st.name,st.age,c.class_name,sec.section_name FROM students st
-         JOIN classes c ON st.class_id = c.id
-         JOIN sections sec ON st.section_id = sec.id
-         WHERE st.id = ?`,
+        `SELECT st.id, st.name, st.age, 
+              c.class_name, sec.section_name
+       FROM students st
+       JOIN classes c ON st.class_id = c.id
+       JOIN sections sec ON st.section_id = sec.id
+       WHERE st.id = ?`,
         [insertResult.insertId],
       );
 
@@ -144,6 +167,7 @@ const studentService = {
   ): Promise<IApiResponse> {
     try {
       const { name, age, class_id } = body;
+      const MAX_STUDENTS = 30;
 
       const [existing]: any = await db.query(
         "SELECT * FROM students WHERE id = ?",
@@ -158,45 +182,66 @@ const studentService = {
       }
 
       let updatedSectionId = existing[0].section_id;
+      let finalClassId = existing[0].class_id;
 
       if (class_id && class_id !== existing[0].class_id) {
+        finalClassId = class_id;
+
         const [sections]: any = await db.query(
-          `SELECT s.id, COUNT(st.id) as total FROM sections s
+          `SELECT s.id, s.section_name, COUNT(st.id) as total FROM sections s
            LEFT JOIN students st ON s.id = st.section_id
            WHERE s.class_id = ?
            GROUP BY s.id
-           HAVING total < 30
+           HAVING total < ?
            ORDER BY total ASC
            LIMIT 1`,
-          [class_id],
+          [class_id, MAX_STUDENTS],
         );
 
         if (sections.length === 0) {
-          return {
-            status: StatusCodes.CONFLICT,
-            message: "No available sections in this class",
-          };
-        }
+          const [allSections]: any = await db.query(
+            `SELECT section_name FROM sections
+            WHERE class_id = ?
+            ORDER BY section_name DESC
+            LIMIT 1`,
+            [class_id],
+          );
 
-        updatedSectionId = sections[0].id;
+          let newSectionName = "A";
+
+          if (allSections.length > 0) {
+            const lastSection = allSections[0].section_name;
+            newSectionName = String.fromCharCode(lastSection.charCodeAt(0) + 1);
+          }
+
+          const [newSection]: any = await db.query(
+            `INSERT INTO sections (section_name, class_id) VALUES (?, ?)`,
+            [newSectionName, class_id],
+          );
+
+          updatedSectionId = newSection.insertId;
+        } else {
+          updatedSectionId = sections[0].id;
+        }
       }
 
       await db.query(
-        "UPDATE students SET name = ?, age = ?, class_id = ?, section_id = ? WHERE id = ?",
+        `UPDATE students SET name = ?, age = ?, class_id = ?, section_id = ?
+          WHERE id = ?`,
         [
-          name || existing[0].name,
-          age || existing[0].age,
-          class_id ?? existing[0].class_id,
+          name ?? existing[0].name,
+          age ?? existing[0].age,
+          finalClassId,
           updatedSectionId,
           id,
         ],
       );
 
       const [student]: any = await db.query(
-        `SELECT st.id,st.name,st.age,c.class_name,sec.section_nameFROM students st
-         JOIN classes c ON st.class_id = c.id
-         JOIN sections sec ON st.section_id = sec.id
-         WHERE st.id = ?`,
+        `SELECT st.id, st.name, st.age,c.class_name, sec.section_name FROM students st
+        JOIN classes c ON st.class_id = c.id
+        JOIN sections sec ON st.section_id = sec.id
+        WHERE st.id = ?`,
         [id],
       );
 

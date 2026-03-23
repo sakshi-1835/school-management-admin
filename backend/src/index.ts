@@ -4,7 +4,6 @@ import routes from "./routes";
 import cors from "cors";
 import { PORT } from "./config/enviornment";
 
-
 const app = express();
 app.use(
   cors({
