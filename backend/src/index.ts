@@ -1,8 +1,8 @@
 import express from "express";
-import { testDBConnection } from "./config/db";
 import routes from "./routes";
 import cors from "cors";
 import { PORT } from "./config/enviornment";
+import testDBConnection from "./config/db";
 
 const app = express();
 app.use(

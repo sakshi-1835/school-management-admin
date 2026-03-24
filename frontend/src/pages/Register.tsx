@@ -12,6 +12,7 @@ const Register = () => {
     email: "",
     password: "",
     role:"",
+    school:""
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +60,12 @@ const Register = () => {
         className="w-full border p-2 rounded"
         type="password"
         placeholder="Password"
+        onChange={handleChange}
+      />
+
+      <input
+        className="w-full border p-2 rounded"
+        placeholder="school"
         onChange={handleChange}
       />
 

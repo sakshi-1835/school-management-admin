@@ -24,6 +24,19 @@ const authController = {
         .json({ message: error?.message || "Internal server error" });
     }
   },
+
+  async deleteUser(req: Request, res: Response) {
+    try {
+      const userId = Number(req.params.id);
+      const result = await authService.deleteUser(userId);
+      return res.status(result.status).json(result);
+    } catch (error: any) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ message: error?.message || "Internal server error" });
+    } 
+
+  },
 };
 
 export default authController;

@@ -1,9 +1,12 @@
 import jwt, { Secret } from "jsonwebtoken";
 import { StatusCodes } from "../@types/enum";
 import { NextFunction, Response } from "express";
-import db from "../config/db";
 import { AuthRequest, IUser } from "../@types/types";
 import { JWT_Secret } from "../config/enviornment";
+import AppDataSource from "../config/data-source";
+import { User } from "../entity/user";
+
+const userRepo = AppDataSource.getRepository(User);
 
 const authenticate = async (
   req: AuthRequest,
@@ -14,7 +17,6 @@ const authenticate = async (
     const authHeader = req.headers.authorization;
     const secretKey: Secret = JWT_Secret as Secret;
 
-    
     if (!authHeader) {
       return res.status(StatusCodes.UNAUTHORIZED).json({
         message: "Authorization header missing",
@@ -37,12 +39,11 @@ const authenticate = async (
 
     const decoded = jwt.verify(token, secretKey) as any;
 
-    const [rows]: any = await db.query(
-      "SELECT id, name, email FROM users WHERE id = ?",
-      [decoded.id] 
-    );
-
-    const user = rows[0];
+    
+    const user = await userRepo.findOne({
+      where: { id: decoded.id },
+      relations: ["school"],
+    });
 
     if (!user) {
       return res.status(StatusCodes.UNAUTHORIZED).json({
@@ -50,11 +51,11 @@ const authenticate = async (
       });
     }
 
-    req.user = user as IUser;
+    req.user = user as unknown as IUser;
 
     next();
   } catch (error: any) {
-    console.log(error)
+    console.log(error);
     return res.status(StatusCodes.FORBIDDEN).json({
       message: error?.message || "Invalid or expired token",
     });

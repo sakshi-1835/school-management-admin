@@ -1,64 +1,87 @@
 import { StatusCodes } from "../@types/enum";
 import { IApiResponse, IClass } from "../@types/types";
-import db from "../config/db";
+import AppDataSource from "../config/data-source";
+import { Class } from "../entity/class";
+import { Section } from "../entity/section";
+import { School } from "../entity/school";
+
+const classRepo = AppDataSource.getRepository(Class);
+const sectionRepo = AppDataSource.getRepository(Section);
+const schoolRepo = AppDataSource.getRepository(School);
 
 const classService = {
   async createClass(body: IClass): Promise<IApiResponse> {
     try {
-      const { class_name } = body;
+      const { class_name, school_name } = body;
 
-      const [existingClass]: any = await db.query(
-        "SELECT id FROM classes WHERE class_name = ?",
-        [class_name],
-      );
-
-      if (existingClass.length > 0) {
+      if (!class_name || !school_name) {
         return {
           status: StatusCodes.BAD_REQUEST,
-          message: "Class already exists",
+          message: "class_name and school_name are required",
         };
       }
 
+    
+      let school = await schoolRepo.findOne({
+        where: { school_name },
+      });
 
-      const [result]: any = await db.query(
-        "INSERT INTO classes (class_name) VALUES (?)",
-        [class_name],
-      );
+      if (!school) {
+        school = await schoolRepo.save(schoolRepo.create({ school_name }));
+      }
 
-      const classId = result.insertId;
+      const existingClass = await classRepo.findOne({
+        where: {
+          class_name,
+          school: { id: school.id },
+        },
+      });
 
-      const initialSection = "A";
+      if (existingClass) {
+        return {
+          status: StatusCodes.BAD_REQUEST,
+          message: "Class already exists in this school",
+        };
+      }
 
-      await db.query(
-        "INSERT INTO sections (section_name, class_id) VALUES (?, ?)",
-        [initialSection, classId],
-      );
+      const newClass = classRepo.create({
+        class_name,
+        school,
+      });
 
+      const savedClass = await classRepo.save(newClass);
+
+     
+      const section = sectionRepo.create({
+        section_name: "A",
+        classObj: savedClass,
+      });
+
+      await sectionRepo.save(section);
 
       return {
         status: StatusCodes.CREATED,
         message: "Class created successfully",
         data: {
-          id: classId,
-          class_name,
-          sections: [
-            {
-              section_name: initialSection,
-            },
-          ],
+          id: savedClass.id,
+          class_name: savedClass.class_name,
+          school_name: school.school_name,
+          sections: [{ section_name: "A" }],
         },
       };
     } catch (error: any) {
-
       return {
         status: StatusCodes.INTERNAL_SERVER_ERROR,
         message: error?.message || "Internal server error",
       };
     }
   },
+
   async getAllClasses(): Promise<IApiResponse> {
     try {
-      const [classes]: any = await db.query("SELECT * FROM classes");
+      const classes = await classRepo.find({
+        relations: ["school", "sections"],
+      });
 
       return {
         status: StatusCodes.OK,

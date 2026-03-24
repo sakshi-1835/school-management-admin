@@ -17,6 +17,7 @@ const ClassesPage = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [className, setClassName] = useState("");
+  const [schoolName, setSchoolName] = useState("");
 
   const getClasses = async () => {
     const res = await http.get(endPoints.classes.getAll);
@@ -67,10 +68,12 @@ const ClassesPage = () => {
     try {
       await http.post(endPoints.classes.create, {
         class_name: className,
+        school_name: schoolName || "Default School",
       });
 
       setShowModal(false);
       setClassName("");
+      setSchoolName("");
       getClasses();
     } catch (err: any) {
       console.error("Error adding class:", err);
@@ -181,6 +184,13 @@ const ClassesPage = () => {
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
                 placeholder="Enter class name"
+                className="w-full border p-2 mb-3 rounded"
+              />
+
+              <input
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                placeholder="Enter school name"
                 className="w-full border p-2 mb-3 rounded"
               />
 

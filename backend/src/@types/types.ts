@@ -13,12 +13,14 @@ export interface IUser {
   name: string;
   email: string;
   password: string;
+  school_name: string;
   role?: "admin" | "teacher";
 }
 
 export interface IClass {
   id?: number;
   class_name: string;
+  school_name: string;
 }
 export interface IStudent {
   id?: number;
