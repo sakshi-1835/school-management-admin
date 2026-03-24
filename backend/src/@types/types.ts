@@ -29,4 +29,5 @@ export interface IStudent {
   gender?: string;
   class_id: number;
   section_id: number;
+  school_id: number;
 }

@@ -1,6 +1,11 @@
 import { StatusCodes } from "../@types/enum";
 import { IApiResponse } from "../@types/types";
-import db from "../config/db";
+import AppDataSource from "../config/data-source";
+import { Section } from "../entity/section";
+import { Class } from "../entity/class";
+
+const sectionRepo = AppDataSource.getRepository(Section);
+const classRepo = AppDataSource.getRepository(Class);
 
 const sectionService = {
   async getSectionsByClass(class_id: number): Promise<IApiResponse> {
@@ -12,22 +17,23 @@ const sectionService = {
         };
       }
 
-      const [existingClass]: any = await db.query(
-        "SELECT * FROM classes WHERE id = ?",
-        [class_id]
-      );
+      const existingClass = await classRepo.findOne({
+        where: { id: class_id },
+      });
 
-      if (existingClass.length === 0) {
+      if (!existingClass) {
         return {
           status: StatusCodes.NOT_FOUND,
           message: "Class not found",
         };
       }
 
-      const [sections]: any = await db.query(
-        "SELECT * FROM sections WHERE class_id = ?",
-        [class_id]
-      );
+      const sections = await sectionRepo.find({
+        where: {
+          classObj: { id: class_id },
+        },
+        relations: ["classObj", "classTeacher"],
+      });
 
       return {
         status: StatusCodes.OK,
@@ -41,6 +47,9 @@ const sectionService = {
       };
     }
   },
+  
 };
+
+
 
 export default sectionService;
