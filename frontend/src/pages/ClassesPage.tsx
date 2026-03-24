@@ -132,8 +132,8 @@ const ClassesPage = () => {
                     className={`px-4 py-2 rounded-lg cursor-pointer transition 
                     ${
                       selectedSectionId === sec.id
-                        ? "bg-green-500 text-white"
-                        : "bg-green-100 hover:bg-green-200"
+                        ? "bg-blue-500 text-white"
+                        : "bg-blue-100 hover:bg-blue-200"
                     }`}
                   >
                     Section {sec.section_name}
