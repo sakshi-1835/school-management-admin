@@ -19,6 +19,7 @@ const endPoints = {
     create: "/student/add",
     update: "/student/update/:id",
     delete: "/student/delete/:id",
+    search: "/student/search"
   },
   school:{
     getAll: "/school/",
