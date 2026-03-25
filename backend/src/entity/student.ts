@@ -8,6 +8,7 @@ import {
 import { School } from "./school";
 import { Class } from "./class";
 import { Section } from "./section";
+
 @Entity()
 export class Student {
   @PrimaryGeneratedColumn()

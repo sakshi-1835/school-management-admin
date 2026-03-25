@@ -5,58 +5,58 @@ import { Student } from "../entity/student";
 import { Class } from "../entity/class";
 import { Section } from "../entity/section";
 import { School } from "../entity/school";
+import { Like } from "typeorm";
 
 const studentRepo = AppDataSource.getRepository(Student);
 const classRepo = AppDataSource.getRepository(Class);
 const sectionRepo = AppDataSource.getRepository(Section);
 const schoolRepo = AppDataSource.getRepository(School);
 
-const MAX_STUDENTS = 10;
+const MAX_STUDENTS = 6;
 
 const studentService = {
   async addStudent(body: IStudent): Promise<IApiResponse> {
-  try {
-    const { name, age, class_id, school_id } = body;
+    try {
+      const { name, age, class_id, school_id } = body;
 
-    const classData = await classRepo.findOne({ where: { id: class_id } });
-    if (!classData) {
-      return { status: 404, message: "Class not found" };
+      const classData = await classRepo.findOne({ where: { id: class_id } });
+      if (!classData) {
+        return { status: 404, message: "Class not found" };
+      }
+
+      const school = await schoolRepo.findOne({ where: { id: school_id } });
+      if (!school) {
+        return { status: 404, message: "School not found" };
+      }
+
+      const section = await assignSection(classData);
+
+      const student = studentRepo.create({
+        name,
+        age,
+        school,
+        classObj: classData,
+        section,
+      });
+
+      const saved = await studentRepo.save(student);
+
+      return {
+        status: 200,
+        message: "Student added",
+        data: saved,
+      };
+    } catch (error: any) {
+      return {
+        status: 500,
+        message: error?.message,
+      };
     }
+  },
 
-    const school = await schoolRepo.findOne({ where: { id: school_id } });
-    if (!school) {
-      return { status: 404, message: "School not found" };
-    }
-
-    const section = await assignSection(classData);
-
-    const student = studentRepo.create({
-      name,
-      age,
-      school,
-      classObj: classData,
-      section,
-    });
-
-    const saved = await studentRepo.save(student);
-
-    return {
-      status: 200,
-      message: "Student added",
-      data: saved,
-    };
-  } catch (error: any) {
-    return {
-      status: 500,
-      message: error?.message,
-    };
-  }
-},
-
-  
   async getAllStudents(
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
   ): Promise<IApiResponse> {
     try {
       const [students, total] = await studentRepo.findAndCount({
@@ -98,10 +98,7 @@ const studentService = {
     }
   },
 
-  async getStudents(
-    classId: number,
-    sectionId: number,
-  ): Promise<IApiResponse> {
+  async getStudents(classId: number, sectionId: number): Promise<IApiResponse> {
     try {
       const section = await sectionRepo.findOne({
         where: {
@@ -147,65 +144,64 @@ const studentService = {
   },
 
   async updateStudent(
-  id: number,
-  body: Partial<IStudent>
-): Promise<IApiResponse> {
-  try {
-    const student = await studentRepo.findOne({
-      where: { id },
-      relations: ["classObj", "school", "section"],
-    });
-
-    if (!student) {
-      return { status: 404, message: "Student not found" };
-    }
-
-    // 🔹 update school
-    if (body.school_id) {
-      const school = await schoolRepo.findOne({
-        where: { id: body.school_id },
+    id: number,
+    body: Partial<IStudent>,
+  ): Promise<IApiResponse> {
+    try {
+      const student = await studentRepo.findOne({
+        where: { id },
+        relations: ["classObj", "school", "section"],
       });
 
-      if (!school) {
-        return { status: 404, message: "School not found" };
+      if (!student) {
+        return { status: 404, message: "Student not found" };
       }
 
-      student.school = school;
-    }
+      // 🔹 update school
+      if (body.school_id) {
+        const school = await schoolRepo.findOne({
+          where: { id: body.school_id },
+        });
 
-    // 🔹 update class + section
-    if (body.class_id && body.class_id !== student.classObj.id) {
-      const classData = await classRepo.findOne({
-        where: { id: body.class_id },
-      });
+        if (!school) {
+          return { status: 404, message: "School not found" };
+        }
 
-      if (!classData) {
-        return { status: 404, message: "Class not found" };
+        student.school = school;
       }
 
-      student.classObj = classData;
-      student.section = await assignSection(classData);
+      // 🔹 update class + section
+      if (body.class_id && body.class_id !== student.classObj.id) {
+        const classData = await classRepo.findOne({
+          where: { id: body.class_id },
+        });
+
+        if (!classData) {
+          return { status: 404, message: "Class not found" };
+        }
+
+        student.classObj = classData;
+        student.section = await assignSection(classData);
+      }
+
+      // 🔹 simple fields
+      student.name = body.name ?? student.name;
+      student.age = body.age ?? student.age;
+
+      const updated = await studentRepo.save(student);
+
+      return {
+        status: 200,
+        message: "Student updated",
+        data: updated,
+      };
+    } catch (error: any) {
+      return {
+        status: 500,
+        message: error?.message,
+      };
     }
-
-    // 🔹 simple fields
-    student.name = body.name ?? student.name;
-    student.age = body.age ?? student.age;
-
-    const updated = await studentRepo.save(student);
-
-    return {
-      status: 200,
-      message: "Student updated",
-      data: updated,
-    };
-  } catch (error: any) {
-    return {
-      status: 500,
-      message: error?.message,
-    };
-  }
-},
-
+  },
 
   async deleteStudent(id: number): Promise<IApiResponse> {
     try {
@@ -233,10 +229,46 @@ const studentService = {
       };
     }
   },
+
+  async searchStudent(query: string): Promise<IApiResponse> {
+    try {
+      if (!query) {
+        return {
+          status: StatusCodes.BAD_REQUEST,
+          message: "Search query is required",
+        };
+      }
+
+      const students = await studentRepo.find({
+        where: {
+          name: Like(`%${query}%`),
+        },
+        relations: ["classObj", "section"],
+      });
+
+      const formattedData = students.map((s) => ({
+        id: s.id,
+        name: s.name,
+        age: s.age,
+        class: s.classObj?.class_name,
+        section: s.section?.section_name,
+      }));
+
+      return {
+        status: StatusCodes.OK,
+        message: "Students fetched successfully",
+        data: formattedData,
+      };
+    } catch (error: any) {
+      return {
+        status: StatusCodes.INTERNAL_SERVER_ERROR,
+        message: error?.message || "Error while searching students",
+      };
+    }
+  },
 };
 
 export default studentService;
-
 
 const assignSection = async (classData: Class): Promise<Section> => {
   const sections = await sectionRepo.find({

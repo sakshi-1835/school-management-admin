@@ -81,5 +81,17 @@ const studentController = {
         .json({ message: error?.message || "Internal server error" });
     }
   },
+
+  async searchStudent(req: Request, res: Response) {
+    try {
+      const { q } = req.query;
+      const result = await studentService.searchStudent(q as string);
+      return res.status(result.status).json(result);
+    } catch (error: any) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ message: error?.message || "Internal server error" });
+    }
+  },
 };
 export default studentController;
