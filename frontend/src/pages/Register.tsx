@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Authcard from "../components/Authcard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import http from "../api/http";
 import endPoints from "../api/endpoints";
 
@@ -11,28 +11,39 @@ const Register = () => {
     name: "",
     email: "",
     password: "",
-    role:"",
-    school:""
+    role: "",
+    school: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [schools, setSchools] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch schools on mount
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const res = await http.get(endPoints.school.getAll); // replace with your endpoint
+        setSchools(res.data || []);
+      } catch (err) {
+        console.error("Error fetching schools", err);
+      }
+    };
+    fetchSchools();
+  }, []);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     setForm({
       ...form,
-      [e.target.placeholder.toLowerCase()]: e.target.value,
+      [e.target.name]: e.target.value,
     });
   };
-
-  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
     try {
       setLoading(true);
-
-      const res = await http.post(
-        endPoints.auth.register,
-        form
-      );
-
+      const res = await http.post(endPoints.auth.register, form);
       alert(res.data.message || "Registered Successfully");
       navigate("/");
     } catch (err: any) {
@@ -43,36 +54,45 @@ const Register = () => {
   };
 
   return (
-       <Authcard title="Register">
+    <Authcard title="Register">
       <input
-        className="w-full border p-2 rounded"
+        className="w-full border p-2 rounded mb-2"
         placeholder="Name"
+        name="name"
         onChange={handleChange}
       />
-
       <input
-        className="w-full border p-2 rounded"
+        className="w-full border p-2 rounded mb-2"
         placeholder="Email"
+        name="email"
         onChange={handleChange}
       />
-
       <input
-        className="w-full border p-2 rounded"
+        className="w-full border p-2 rounded mb-2"
         type="password"
         placeholder="Password"
+        name="password"
         onChange={handleChange}
       />
 
-      <input
-        className="w-full border p-2 rounded"
-        placeholder="school"
+      <select
+        className="w-full border p-2 rounded mb-2"
+        name="school"
+        value={form.school}
         onChange={handleChange}
-      />
+      >
+        <option value="">Select School</option>
+        {schools.map((s) => (
+          <option key={s.id} value={s.school_name}>
+            {s.school_name}
+          </option>
+        ))}
+      </select>
 
       <input
-        className="w-full border p-2 rounded"
-        type="text"
+        className="w-full border p-2 rounded mb-2"
         placeholder="Role"
+        name="role"
         onChange={handleChange}
       />
 
@@ -84,7 +104,7 @@ const Register = () => {
         {loading ? "Registering..." : "Sign Up"}
       </button>
 
-      <p className="text-center text-sm">
+      <p className="text-center text-sm mt-2">
         Already have an account?{" "}
         <span
           onClick={() => navigate("/")}
@@ -94,7 +114,6 @@ const Register = () => {
         </span>
       </p>
     </Authcard>
-
   );
 };
 

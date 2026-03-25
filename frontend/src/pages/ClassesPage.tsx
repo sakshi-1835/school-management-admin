@@ -7,10 +7,11 @@ const ClassesPage = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [schools, setSchools] = useState<any[]>([]);
 
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(
-    null,
+    null
   );
 
   const [loading, setLoading] = useState(true);
@@ -19,31 +20,52 @@ const ClassesPage = () => {
   const [className, setClassName] = useState("");
   const [schoolName, setSchoolName] = useState("");
 
+
   const getClasses = async () => {
-    const res = await http.get(endPoints.classes.getAll);
-    setClasses(res.data.data || res.data);
-    setLoading(false);
+    try {
+      const res = await http.get(endPoints.classes.getAll);
+      setClasses(res.data.data || res.data);
+    } catch (err) {
+      console.error("Error fetching classes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSchools = async () => {
+    try {
+      const res = await http.get(endPoints.school.getAll);
+      setSchools(res.data.data || res.data);
+    } catch (err) {
+      console.error("Error fetching schools:", err);
+    }
   };
 
   const getSections = async (classId: number) => {
-    const res = await http.get(endPoints.sections.getAll, {
-      params: { class_id: classId },
-    });
-    setSections(res.data.data || res.data);
+    try {
+      const res = await http.get(endPoints.sections.getAll, {
+        params: { class_id: classId },
+      });
+      setSections(res.data.data || res.data);
+    } catch (err) {
+      console.error("Error fetching sections:", err);
+    }
   };
 
   const getStudents = async (classId: number, sectionId: number) => {
-    const res = await http.get(endPoints.students.getAllBySection, {
-      params: {
-        classId: classId,
-        sectionId: sectionId,
-      },
-    });
-    setStudents(res.data.students);
+    try {
+      const res = await http.get(endPoints.students.getAllBySection, {
+        params: { classId, sectionId },
+      });
+      setStudents(res.data.students);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+    }
   };
 
   useEffect(() => {
     getClasses();
+    getSchools();
   }, []);
 
   const handleClassClick = async (classId: number) => {
@@ -60,15 +82,15 @@ const ClassesPage = () => {
   };
 
   const handleAddClass = async () => {
-    if (!className.trim()) {
-      alert("Class name is required");
+    if (!className.trim() || !schoolName) {
+      alert("Class name and School are required");
       return;
     }
 
     try {
       await http.post(endPoints.classes.create, {
         class_name: className,
-        school_name: schoolName || "Default School",
+        school_name: schoolName,
       });
 
       setShowModal(false);
@@ -187,12 +209,18 @@ const ClassesPage = () => {
                 className="w-full border p-2 mb-3 rounded"
               />
 
-              <input
+              <select
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
-                placeholder="Enter school name"
                 className="w-full border p-2 mb-3 rounded"
-              />
+              >
+                <option value="">Select School</option>
+                {schools.map((school: any) => (
+                  <option key={school.id} value={school.school_name}>
+                    {school.school_name}
+                  </option>
+                ))}
+              </select>
 
               <div className="flex justify-end space-x-2">
                 <button

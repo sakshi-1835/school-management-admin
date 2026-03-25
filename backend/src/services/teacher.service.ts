@@ -12,7 +12,6 @@ const teacherService = {
     try {
       const { name, email, subject, school_name } = body;
 
-
       const school = await schoolRepo.findOne({
         where: { school_name },
       });
@@ -24,7 +23,6 @@ const teacherService = {
         };
       }
 
-      // 🔍 check duplicate email
       const existing = await teacherRepo.findOne({
         where: { email },
       });
@@ -36,7 +34,6 @@ const teacherService = {
         };
       }
 
-      // ✅ create teacher
       const teacher = teacherRepo.create({
         name,
         email,
@@ -59,7 +56,6 @@ const teacherService = {
     }
   },
 
-  // ✅ GET ALL TEACHERS
   async getAllTeachers(): Promise<IApiResponse> {
     try {
       const teachers = await teacherRepo.find({
@@ -79,7 +75,6 @@ const teacherService = {
     }
   },
 
-  // ✅ GET SINGLE TEACHER
   async getTeacherById(id: number): Promise<IApiResponse> {
     try {
       const teacher = await teacherRepo.findOne({
@@ -107,11 +102,7 @@ const teacherService = {
     }
   },
 
-  // ✅ UPDATE TEACHER
-  async updateTeacher(
-    id: number,
-    body: any,
-  ): Promise<IApiResponse> {
+  async updateTeacher(id: number, body: any): Promise<IApiResponse> {
     try {
       const teacher = await teacherRepo.findOne({
         where: { id },
@@ -131,7 +122,6 @@ const teacherService = {
         };
       }
 
-      // 🔄 if school_name comes → update relation
       if (body.school_name) {
         const school = await schoolRepo.findOne({
           where: { school_name: body.school_name },
@@ -165,7 +155,6 @@ const teacherService = {
     }
   },
 
-  // ✅ DELETE TEACHER
   async deleteTeacher(id: number): Promise<IApiResponse> {
     try {
       const teacher = await teacherRepo.findOne({

@@ -20,5 +20,8 @@ const endPoints = {
     update: "/student/update/:id",
     delete: "/student/delete/:id",
   },
+  school:{
+    getAll: "/school/",
+  }
 };
 export default endPoints;
