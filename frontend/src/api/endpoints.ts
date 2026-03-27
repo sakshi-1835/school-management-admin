@@ -12,6 +12,7 @@ const endPoints = {
   },
   sections: {
     getAll: "/section",
+    assignTeacher : "/section/assign-teacher"
   },
   students: {
     getAll: "/student/",
@@ -23,6 +24,9 @@ const endPoints = {
   },
   school:{
     getAll: "/school/",
+  },
+  teachers :{
+    getAll : "/teacher/all"
   }
 };
 export default endPoints;

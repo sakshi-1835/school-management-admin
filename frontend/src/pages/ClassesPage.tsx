@@ -8,19 +8,21 @@ const ClassesPage = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [schools, setSchools] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]); // For dropdown
 
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
-  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(
-    null
-  );
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(true);
 
-  const [showModal, setShowModal] = useState(false);
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
+  const [showEditSectionModal, setShowEditSectionModal] = useState(false);
   const [className, setClassName] = useState("");
   const [schoolName, setSchoolName] = useState("");
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
 
-
+  // Fetch all classes
   const getClasses = async () => {
     try {
       const res = await http.get(endPoints.classes.getAll);
@@ -32,6 +34,7 @@ const ClassesPage = () => {
     }
   };
 
+  // Fetch schools
   const getSchools = async () => {
     try {
       const res = await http.get(endPoints.school.getAll);
@@ -41,6 +44,7 @@ const ClassesPage = () => {
     }
   };
 
+  // Fetch sections for a class
   const getSections = async (classId: number) => {
     try {
       const res = await http.get(endPoints.sections.getAll, {
@@ -52,6 +56,7 @@ const ClassesPage = () => {
     }
   };
 
+  // Fetch students for a section
   const getStudents = async (classId: number, sectionId: number) => {
     try {
       const res = await http.get(endPoints.students.getAllBySection, {
@@ -63,9 +68,21 @@ const ClassesPage = () => {
     }
   };
 
+  // Fetch all teachers for dropdown
+  const getTeachers = async () => {
+    try {
+      const res = await http.get(endPoints.teachers.getAll);
+      setTeachers(res.data.data || res.data);
+      console.log(res)
+    } catch (err) {
+      console.error("Error fetching teachers:", err);
+    }
+  };
+
   useEffect(() => {
     getClasses();
     getSchools();
+    getTeachers();
   }, []);
 
   const handleClassClick = async (classId: number) => {
@@ -81,9 +98,38 @@ const ClassesPage = () => {
     await getStudents(selectedClassId, sectionId);
   };
 
+  // Open edit modal for assigning teacher
+  const handleEditSection = (sectionId: number) => {
+    setEditingSectionId(sectionId);
+    setSelectedTeacherId(null);
+    setShowEditSectionModal(true);
+  };
+
+  // Assign teacher to section
+  const handleAssignTeacher = async () => {
+    if (!editingSectionId || !selectedTeacherId) {
+      alert("Please select a teacher");
+      return;
+    }
+
+    try {
+      await http.post(endPoints.sections.assignTeacher, {
+        section_id: editingSectionId,
+        teacher_id: selectedTeacherId,
+      });
+      alert("Teacher assigned successfully!");
+      setShowEditSectionModal(false);
+      setEditingSectionId(null);
+      setSelectedTeacherId(null);
+    } catch (err: any) {
+      console.error("Error assigning teacher:", err);
+      alert(err.response?.data?.message || "Failed to assign teacher");
+    }
+  };
+
   const handleAddClass = async () => {
-    if (!className.trim() || !schoolName) {
-      alert("Class name and School are required");
+    if (!className || !schoolName) {
+      alert("Please fill in all fields");
       return;
     }
 
@@ -92,11 +138,11 @@ const ClassesPage = () => {
         class_name: className,
         school_name: schoolName,
       });
-
-      setShowModal(false);
+      alert("Class added successfully!");
+      setShowAddClassModal(false);
       setClassName("");
       setSchoolName("");
-      getClasses();
+      await getClasses();
     } catch (err: any) {
       console.error("Error adding class:", err);
       alert(err.response?.data?.message || "Failed to add class");
@@ -112,7 +158,7 @@ const ClassesPage = () => {
           <h1 className="text-2xl font-bold">Classes</h1>
 
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => setShowAddClassModal(true)}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
           >
             + Add Class
@@ -153,15 +199,22 @@ const ClassesPage = () => {
                 {sections.map((sec) => (
                   <div
                     key={sec.id}
-                    onClick={() => handleSectionClick(sec.id)}
-                    className={`px-4 py-2 rounded-lg cursor-pointer transition 
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition 
                     ${
                       selectedSectionId === sec.id
                         ? "bg-blue-500 text-white"
                         : "bg-blue-100 hover:bg-blue-200"
                     }`}
                   >
-                    Section {sec.section_name}
+                    <div onClick={() => handleSectionClick(sec.id)}>
+                      Section {sec.section_name}
+                    </div>
+                    <button
+                      onClick={() => handleEditSection(sec.id)}
+                      className="ml-2 px-2 py-1 text-sm bg-green-500 hover:bg-green-600 text-white rounded"
+                    >
+                      Edit
+                    </button>
                   </div>
                 ))}
               </div>
@@ -172,7 +225,6 @@ const ClassesPage = () => {
         {selectedSectionId && (
           <div className="mt-8 bg-white p-5 rounded-xl shadow-md">
             <h2 className="text-xl font-semibold mb-4">Students</h2>
-
             {students.length === 0 ? (
               <p>No students found</p>
             ) : (
@@ -197,7 +249,8 @@ const ClassesPage = () => {
           </div>
         )}
 
-        {showModal && (
+        {/* Add Class Modal */}
+        {showAddClassModal && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl shadow-lg w-80">
               <h2 className="font-bold mb-3 text-lg">Add Class</h2>
@@ -224,7 +277,7 @@ const ClassesPage = () => {
 
               <div className="flex justify-end space-x-2">
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => setShowAddClassModal(false)}
                   className="px-3 py-1 bg-gray-300 rounded"
                 >
                   Cancel
@@ -235,6 +288,44 @@ const ClassesPage = () => {
                   className="px-3 py-1 bg-blue-500 text-white rounded"
                 >
                   Add
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Section Modal */}
+        {showEditSectionModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
+            <div className="bg-white p-6 rounded-xl shadow-lg w-80">
+              <h2 className="font-bold mb-3 text-lg">Assign Class Teacher</h2>
+
+              <select
+                value={selectedTeacherId || ""}
+                onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
+                className="w-full border p-2 mb-3 rounded"
+              >
+                <option value="">Select Teacher</option>
+                {teachers.map((teacher: any) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowEditSectionModal(false)}
+                  className="px-3 py-1 bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleAssignTeacher}
+                  className="px-3 py-1 bg-green-500 text-white rounded"
+                >
+                  Assign
                 </button>
               </div>
             </div>

@@ -15,5 +15,21 @@ const sectionController = {
         .json({ message: error?.message || "Internal server error" });
     }
   },
+
+  async assignTeachee(req: Request, res: Response) {
+    try {
+      const { section_id, teacher_id } = req.body;
+
+      const result = await sectionService.assignTeacherToSection(
+        Number(section_id),
+        Number(teacher_id),
+      );
+      return res.status(result.status).json(result);
+    } catch (error: any) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ message: error?.message || "Internal server error" });
+    }
+  },
 };
 export default sectionController;
