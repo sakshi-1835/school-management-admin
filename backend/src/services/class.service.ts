@@ -21,7 +21,6 @@ const classService = {
         };
       }
 
-    
       let school = await schoolRepo.findOne({
         where: { school_name },
       });
@@ -51,7 +50,6 @@ const classService = {
 
       const savedClass = await classRepo.save(newClass);
 
-     
       const section = sectionRepo.create({
         section_name: "A",
         classObj: savedClass,
@@ -87,6 +85,97 @@ const classService = {
         status: StatusCodes.OK,
         message: "Classes retrieved successfully",
         data: classes,
+      };
+    } catch (error: any) {
+      return {
+        status: StatusCodes.INTERNAL_SERVER_ERROR,
+        message: error?.message || "Internal server error",
+      };
+    }
+  },
+
+  async updateClass(id: number, body: IClass): Promise<IApiResponse> {
+    try {
+      const { class_name, school_name } = body;
+
+      const existingClass = await classRepo.findOne({
+        where: { id },
+        relations: ["school"],
+      });
+
+      if (!existingClass) {
+        return {
+          status: StatusCodes.NOT_FOUND,
+          message: "Class not found",
+        };
+      }
+
+      if (school_name) {
+        let school = await schoolRepo.findOne({
+          where: { school_name },
+        });
+
+        if (!school) {
+          school = await schoolRepo.save(schoolRepo.create({ school_name }));
+        }
+
+        existingClass.school = school;
+      }
+
+      if (class_name) {
+        existingClass.class_name = class_name;
+      }
+
+      await classRepo.save(existingClass);
+
+      return {
+        status: StatusCodes.OK,
+        message: "Class updated successfully",
+        data: existingClass,
+      };
+    } catch (error: any) {
+      return {
+        status: StatusCodes.INTERNAL_SERVER_ERROR,
+        message: error?.message || "Internal server error",
+      };
+    }
+  },
+  async deleteClass(id: number): Promise<IApiResponse> {
+    try {
+      const existingClass = await classRepo.findOne({
+        where: { id },
+        relations: ["sections", "sections.students"],
+      });
+
+      if (!existingClass) {
+        return {
+          status: StatusCodes.NOT_FOUND,
+          message: "Class not found",
+        };
+      }
+      const hasStudents = existingClass.sections.some(
+        (section) => (section.students ?? []).length > 0,
+      );
+
+      console.log(hasStudents);
+
+      if (hasStudents) {
+        return {
+          status: StatusCodes.BAD_REQUEST,
+          message: "Cannot delete class. Some sections have students assigned.",
+        };
+      }
+
+     
+      if (existingClass.sections?.length) {
+        await sectionRepo.remove(existingClass.sections);
+      }
+
+      await classRepo.remove(existingClass);
+
+      return {
+        status: StatusCodes.OK,
+        message: "Class deleted successfully",
       };
     } catch (error: any) {
       return {

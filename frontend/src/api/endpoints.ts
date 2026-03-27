@@ -9,6 +9,8 @@ const endPoints = {
   classes: {
     getAll: "/class/",
     create: "/class/create",
+    update:"/class/update/:id",
+    delete:"/class/delete/:id",
   },
   sections: {
     getAll: "/section",

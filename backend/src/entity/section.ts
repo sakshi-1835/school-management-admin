@@ -4,12 +4,15 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { Class } from "./class";
 import { Teacher } from "./teacher";
+import { Student } from "./student";
 
 @Entity()
 export class Section {
+  [x: string]: any;
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -27,4 +30,7 @@ export class Section {
   })
   @JoinColumn({ name: "class_teacher_id" })
   classTeacher!: Teacher;
+
+  @OneToMany(() => Student, (student) => student.section)
+  students: Student[] | undefined;
 }
