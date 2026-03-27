@@ -4,6 +4,7 @@ import Register from "./pages/Register";
 import DashBoard from "./pages/DashBoard";
 import ClassesPage from "./pages/ClassesPage";
 import ProtectedRoute from "./routes/ProtectedRoutes";
+import TeachersPage from "./pages/TeacherPage";
 
 const AuthWrapper = () => {
   return (
@@ -28,6 +29,7 @@ const App = () => {
           }
         />
         <Route path="/classes" element={<ClassesPage />} />
+        <Route path="/teachers" element={<TeachersPage />} />
       </Routes>
     </BrowserRouter>
   );

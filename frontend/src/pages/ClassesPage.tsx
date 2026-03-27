@@ -29,6 +29,10 @@ const ClassesPage = () => {
   const [showEditClassModal, setShowEditClassModal] = useState(false);
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [sectionName, setSectionName] = useState("");
+  const [openSectionMenuId, setOpenSectionMenuId] = useState<number | null>(
+    null,
+  );
 
   // Fetch all classes
   const getClasses = async () => {
@@ -148,7 +152,7 @@ const ClassesPage = () => {
 
     try {
       await http.delete(endPoints.classes.delete.replace(":id", String(id)));
-       setClasses((prev) => prev.filter((cls) => cls.id !== id));
+      setClasses((prev) => prev.filter((cls) => cls.id !== id));
       alert("Class deleted successfully!");
       await getClasses();
     } catch (err: any) {
@@ -171,12 +175,54 @@ const ClassesPage = () => {
   };
 
   // Open edit modal for assigning teacher
-  const handleEditSection = (sectionId: number) => {
-    setEditingSectionId(sectionId);
-    setSelectedTeacherId(null);
+  const handleEditSection = (sec: any) => {
+    setEditingSectionId(sec.id);
+    setSectionName(sec.section_name);
+    setSelectedTeacherId(sec.teacher_id || null);
     setShowEditSectionModal(true);
   };
 
+  const handleUpdateSection = async () => {
+    if (!editingSectionId || !sectionName) {
+      alert("Section name required");
+      return;
+    }
+
+    try {
+      await http.put(
+        endPoints.sections.update.replace(":id", String(editingSectionId)),
+        {
+          section_name: sectionName,
+          teacher_id: selectedTeacherId,
+        },
+      );
+
+      alert("Section updated successfully!");
+      setShowEditSectionModal(false);
+      setEditingSectionId(null);
+      setSectionName("");
+      setSelectedTeacherId(null);
+
+      if (selectedClassId) await getSections(selectedClassId);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Update failed");
+    }
+  };
+  const handleDeleteSection = async (id: number) => {
+    const confirmDelete = window.confirm("Delete this section?");
+    if (!confirmDelete) return;
+
+    try {
+      await http.delete(endPoints.sections.delete.replace(":id", String(id)));
+
+      setSections((prev) => prev.filter((sec) => sec.id !== id));
+      alert("Section deleted!");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Delete failed");
+    }
+  };
   // Assign teacher to section
   const handleAssignTeacher = async () => {
     if (!editingSectionId || !selectedTeacherId) {
@@ -244,12 +290,12 @@ const ClassesPage = () => {
             {classes.map((cls) => (
               <div
                 key={cls.id}
-                className={`relative p-5 rounded-xl shadow-md transition 
-                  ${
-                    selectedClassId === cls.id
-                      ? "bg-blue-500 text-white"
-                      : "bg-white hover:bg-blue-50"
-                  }`}
+                className={`relative p-5 rounded-xl shadow-md transition overflow-visible
+    ${
+      selectedClassId === cls.id
+        ? "bg-blue-500 text-white"
+        : "bg-white hover:bg-blue-50"
+    }`}
               >
                 {/* Click area */}
                 <div
@@ -263,44 +309,43 @@ const ClassesPage = () => {
 
                 {/* 3 DOT MENU */}
                 <div className="absolute top-2 right-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuId(openMenuId === cls.id ? null : cls.id);
-                  }}
-                  className="text-lg"
-                >
-                  ⋮
-                </button>
-
-                {/* DROPDOWN */}
-                {openMenuId === cls.id && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 mt-2 w-28 bg-white border rounded shadow"
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(openMenuId === cls.id ? null : cls.id);
+                    }}
+                    className="text-lg"
                   >
-                    <button
-                      onClick={() => {
-                        handleEditClass(cls);
-                        setOpenMenuId(null);
-                      }}
-                      className="block w-full px-3 py-2 text-left text-black hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
+                    ⋮
+                  </button>
 
-                    <button
-                      onClick={() => {
-                        handleDeleteClass(cls.id);
-                        setOpenMenuId(null);
-                      }}
-                      className="block w-full px-3 py-2 text-left text-red-500 hover:bg-gray-100"
+                  {openMenuId === cls.id && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute right-0 top-6 w-32 bg-white border rounded shadow-lg z-50"
                     >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
+                      <button
+                        onClick={() => {
+                          handleEditClass(cls);
+                          setOpenMenuId(null);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-black hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleDeleteClass(cls.id);
+                          setOpenMenuId(null);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-red-500 hover:bg-gray-100"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -317,22 +362,56 @@ const ClassesPage = () => {
                 {sections.map((sec) => (
                   <div
                     key={sec.id}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition 
-                    ${
-                      selectedSectionId === sec.id
-                        ? "bg-blue-500 text-white"
-                        : "bg-blue-100 hover:bg-blue-200"
-                    }`}
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition overflow-visible
+    ${
+      selectedSectionId === sec.id
+        ? "bg-blue-500 text-white"
+        : "bg-blue-100 hover:bg-blue-200"
+    }`}
                   >
                     <div onClick={() => handleSectionClick(sec.id)}>
                       Section {sec.section_name}
                     </div>
-                    <button
-                      onClick={() => handleEditSection(sec.id)}
-                      className="ml-2 px-2 py-1 text-sm bg-green-500 hover:bg-green-600 text-white rounded"
-                    >
-                      Edit
-                    </button>
+
+                    <div className="absolute right-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenSectionMenuId(
+                            openSectionMenuId === sec.id ? null : sec.id,
+                          );
+                        }}
+                      >
+                        ⋮
+                      </button>
+
+                      {openSectionMenuId === sec.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-6 w-32 bg-white border rounded shadow-lg z-50"
+                        >
+                          <button
+                            onClick={() => {
+                              handleEditSection(sec);
+                              setOpenSectionMenuId(null);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-black hover:bg-gray-100"
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              handleDeleteSection(sec.id);
+                              setOpenSectionMenuId(null);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-red-500 hover:bg-gray-100"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -346,7 +425,7 @@ const ClassesPage = () => {
             {students.length === 0 ? (
               <p>No students found</p>
             ) : (
-              <StudentTable student = {students}/>
+              <StudentTable students={students} />
             )}
           </div>
         )}
@@ -444,8 +523,17 @@ const ClassesPage = () => {
         {showEditSectionModal && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl shadow-lg w-80">
-              <h2 className="font-bold mb-3 text-lg">Assign Class Teacher</h2>
+              <h2 className="font-bold mb-3 text-lg">Edit Section</h2>
 
+              {/* Section Name */}
+              <input
+                value={sectionName}
+                onChange={(e) => setSectionName(e.target.value)}
+                placeholder="Section name"
+                className="w-full border p-2 mb-3 rounded"
+              />
+
+              {/* Teacher */}
               <select
                 value={selectedTeacherId || ""}
                 onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
@@ -468,10 +556,10 @@ const ClassesPage = () => {
                 </button>
 
                 <button
-                  onClick={handleAssignTeacher}
-                  className="px-3 py-1 bg-green-500 text-white rounded"
+                  onClick={handleUpdateSection}
+                  className="px-3 py-1 bg-blue-500 text-white rounded"
                 >
-                  Assign
+                  Update
                 </button>
               </div>
             </div>

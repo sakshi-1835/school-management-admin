@@ -9,12 +9,14 @@ const endPoints = {
   classes: {
     getAll: "/class/",
     create: "/class/create",
-    update:"/class/update/:id",
-    delete:"/class/delete/:id",
+    update: "/class/update/:id",
+    delete: "/class/delete/:id",
   },
   sections: {
     getAll: "/section",
-    assignTeacher : "/section/assign-teacher"
+    assignTeacher: "/section/assign-teacher",
+    update: "/section/update/:id",
+    delete: "/section/delete/:id",
   },
   students: {
     getAll: "/student/",
@@ -22,13 +24,17 @@ const endPoints = {
     create: "/student/add",
     update: "/student/update/:id",
     delete: "/student/delete/:id",
-    search: "/student/search"
+    search: "/student/search",
   },
-  school:{
+  school: {
     getAll: "/school/",
   },
-  teachers :{
-    getAll : "/teacher/all"
-  }
+  teachers: {
+    getAll: "/teacher/all",
+    create: "/teacher/",
+    update: "/teacher/:id",
+    delete: "/teacher/:id",
+    getById: "/teacher/:id",
+  },
 };
 export default endPoints;

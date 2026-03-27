@@ -16,6 +16,10 @@ const Sidebar = () => {
       <Link to="/classes" className="block p-2 bg-gray-200 rounded">
         Classes
       </Link>
+      <Link to="/teachers" className="block p-2 bg-gray-200 rounded">
+        Teachers
+      </Link>
+
       <button
         onClick={handleLogout}
         className="p-2 bg-red-400 text-white rounded"
