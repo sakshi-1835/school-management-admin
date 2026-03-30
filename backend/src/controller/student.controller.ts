@@ -19,13 +19,30 @@ const studentController = {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 10;
 
-      const result = await studentService.getAllStudents(page, limit);
+      const school_id = req.query.school_id
+        ? Number(req.query.school_id)
+        : undefined;
+
+      const classId = req.query.classId ? Number(req.query.classId) : undefined;
+
+      const sectionId = req.query.sectionId
+        ? Number(req.query.sectionId)
+        : undefined;
+
+      const result = await studentService.getAllStudents(
+        req.user, 
+        page,
+        limit,
+        school_id,
+        classId,
+        sectionId,
+      );
+
       return res.status(result.status).json(result);
     } catch (error: any) {
-      res
-
-        .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .json({ message: error?.message || "Internal server error" });
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: error?.message || "Internal server error",
+      });
     }
   },
 

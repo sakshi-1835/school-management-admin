@@ -22,7 +22,7 @@ const Register = () => {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await http.get(endPoints.school.getAll); // replace with your endpoint
+        const res = await http.get(endPoints.school.getAll);
         setSchools(res.data || []);
       } catch (err) {
         console.error("Error fetching schools", err);
@@ -43,7 +43,17 @@ const Register = () => {
   const handleRegister = async () => {
     try {
       setLoading(true);
-      const res = await http.post(endPoints.auth.register, form);
+
+      const payload = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        school_name: form.school ,
+      };
+
+      const res = await http.post(endPoints.auth.register, payload);
+
       alert(res.data.message || "Registered Successfully");
       navigate("/");
     } catch (err: any) {
@@ -89,12 +99,16 @@ const Register = () => {
         ))}
       </select>
 
-      <input
+      <select
         className="w-full border p-2 rounded mb-2"
-        placeholder="Role"
         name="role"
+        value={form.role}
         onChange={handleChange}
-      />
+      >
+        <option value="">Select Role</option>
+        <option value="SUPER_ADMIN">Super Admin</option>
+        <option value="SCHOOL_ADMIN">School Admin</option>
+      </select>
 
       <button
         onClick={handleRegister}

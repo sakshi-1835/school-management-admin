@@ -5,7 +5,9 @@ import dashboardServices from "../services/dashboard.services";
 const dashboardController = {
   async getDashboardData(req: Request, res: Response) {
     try {
-      const result = await dashboardServices.getDashboardData();
+      const { school_id } = req.query;
+      const schoolIdNum = school_id ? Number(school_id) : undefined;
+      const result = await dashboardServices.getDashboardData(schoolIdNum);
       return res.status(result.status).json(result);
     } catch (error: any) {
       res
@@ -14,4 +16,4 @@ const dashboardController = {
     }
   },
 };
-export default dashboardController; 
+export default dashboardController;

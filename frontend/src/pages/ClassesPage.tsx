@@ -10,7 +10,7 @@ const ClassesPage = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [schools, setSchools] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]); // For dropdown
-
+  const [selectedSchool, setSelectedSchool] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(
     null,
@@ -33,14 +33,30 @@ const ClassesPage = () => {
   const [openSectionMenuId, setOpenSectionMenuId] = useState<number | null>(
     null,
   );
+  const role = localStorage.getItem("role");
+  const schoolId = localStorage.getItem("school_id");
 
   // Fetch all classes
   const getClasses = async () => {
     try {
-      const res = await http.get(endPoints.classes.getAll);
+      let params: any = {};
+
+      if (role === "SCHOOL_ADMIN" && schoolId) {
+        params.school_id = schoolId;
+      }
+
+      if (role === "SUPER_ADMIN") {
+        if (!selectedSchool) {
+          setClasses([]);
+          return;
+        }
+        params.school_id = selectedSchool;
+      }
+
+      const res = await http.get(endPoints.classes.getAll, { params });
       setClasses(res.data.data || res.data);
     } catch (err) {
-      console.error("Error fetching classes:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -48,6 +64,8 @@ const ClassesPage = () => {
 
   // Fetch schools
   const getSchools = async () => {
+    if (role === "SCHOOL_ADMIN") return;
+
     try {
       const res = await http.get(endPoints.school.getAll);
       setSchools(res.data.data || res.data);
@@ -90,10 +108,12 @@ const ClassesPage = () => {
   };
 
   useEffect(() => {
-    getClasses();
     getSchools();
     getTeachers();
   }, []);
+  useEffect(() => {
+    getClasses();
+  }, [selectedSchool]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -223,32 +243,19 @@ const ClassesPage = () => {
       alert(err.response?.data?.message || "Delete failed");
     }
   };
-  // Assign teacher to section
-  const handleAssignTeacher = async () => {
-    if (!editingSectionId || !selectedTeacherId) {
-      alert("Please select a teacher");
-      return;
-    }
-
-    try {
-      await http.post(endPoints.sections.assignTeacher, {
-        section_id: editingSectionId,
-        teacher_id: selectedTeacherId,
-      });
-      alert("Teacher assigned successfully!");
-      setShowEditSectionModal(false);
-      setEditingSectionId(null);
-      setSelectedTeacherId(null);
-    } catch (err: any) {
-      console.error("Error assigning teacher:", err);
-      alert(err.response?.data?.message || "Failed to assign teacher");
-    }
-  };
-
   const handleAddClass = async () => {
     if (!className || !schoolName) {
       alert("Please fill in all fields");
       return;
+    }
+    const payload: any = {
+      class_name: className,
+    };
+
+    if (role === "SUPER_ADMIN") {
+      payload.school_name = schoolName;
+    } else {
+      payload.school_id = schoolId;
     }
 
     try {
@@ -275,6 +282,8 @@ const ClassesPage = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Classes</h1>
 
+         
+
           <button
             onClick={() => setShowAddClassModal(true)}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
@@ -282,6 +291,30 @@ const ClassesPage = () => {
             + Add Class
           </button>
         </div>
+        {/* MESSAGE */}
+          {role === "SUPER_ADMIN" && !selectedSchool && (
+            <p className="text-gray-500 mb-4">
+              👉 Please select a school to view classes
+            </p>
+          )}
+         {role === "SUPER_ADMIN" && (
+            <div className="mb-4">
+              <select
+                value={selectedSchool}
+                onChange={(e) => setSelectedSchool(e.target.value)}
+                className="border p-2 rounded"
+              >
+                <option value="">Select School</option>
+                {schools.map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.school_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          
 
         {loading ? (
           <p>Loading...</p>
@@ -443,18 +476,20 @@ const ClassesPage = () => {
                 className="w-full border p-2 mb-3 rounded"
               />
 
-              <select
-                value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
-                className="w-full border p-2 mb-3 rounded"
-              >
-                <option value="">Select School</option>
-                {schools.map((school: any) => (
-                  <option key={school.id} value={school.school_name}>
-                    {school.school_name}
-                  </option>
-                ))}
-              </select>
+              {role === "SUPER_ADMIN" && (
+                <select
+                  value={schoolName}
+                  onChange={(e) => setSchoolName(e.target.value)}
+                  className="w-full border p-2 mb-3 rounded"
+                >
+                  <option value="">Select School</option>
+                  {schools.map((school: any) => (
+                    <option key={school.id} value={school.school_name}>
+                      {school.school_name}
+                    </option>
+                  ))}
+                </select>
+              )}
 
               <div className="flex justify-end space-x-2">
                 <button

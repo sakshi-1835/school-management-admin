@@ -51,7 +51,7 @@ const authenticate = async (
       });
     }
 
-    req.user = user as unknown as IUser;
+    req.user = decoded;
 
     next();
   } catch (error: any) {

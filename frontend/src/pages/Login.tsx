@@ -21,32 +21,31 @@ const Login = () => {
     });
   };
 
-    const handleLogin = async () => {
-    try {
-      setLoading(true);
+  const handleLogin = async () => {
+  try {
+    setLoading(true);
 
-      const res = await http.post(endPoints.auth.login, form);
+    const res = await http.post(endPoints.auth.login, form);
+    const { token, user } = res.data;
 
-      const { token, user } = res.data;
+    console.log("LOGIN SUCCESS");
 
-      
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", user.role);
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", user.role);
 
-      if (res.data.user.role === "admin") {
-        alert("Admin Login Successful");
-        navigate("/dashboard");
-      } else {
-        alert("Access Denied: Only admin allowed");
-        localStorage.clear();
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+    alert("Login Successful");
 
+    console.log("BEFORE NAVIGATE");
+
+    navigate("/dashboard");
+
+    console.log("AFTER NAVIGATE"); // 👈 ye print hona chahiye
+  } catch (err: any) {
+    alert(err.response?.data?.message || "Login failed");
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <Authcard title="Login">
       <input

@@ -3,18 +3,45 @@ import { IApiResponse } from "../@types/types";
 import AppDataSource from "../config/data-source";
 import { Teacher } from "../entity/teacher";
 import { School } from "../entity/school";
+import { UserRole } from "../entity/user";
 
 const teacherRepo = AppDataSource.getRepository(Teacher);
 const schoolRepo = AppDataSource.getRepository(School);
 
 const teacherService = {
-  async createTeacher(body: any): Promise<IApiResponse> {
+  async createTeacher(
+    body: any,
+    user: { role: string; school_id: number | null },
+  ): Promise<IApiResponse> {
     try {
       const { name, email, subject, school_name } = body;
 
-      const school = await schoolRepo.findOne({
-        where: { school_name },
-      });
+      let school;
+
+      // 🔥 SUPER ADMIN
+      if (user.role === UserRole.SUPER_ADMIN) {
+        if (!school_name) {
+          return {
+            status: StatusCodes.BAD_REQUEST,
+            message: "school_name is required",
+          };
+        }
+
+        school = await schoolRepo.findOne({
+          where: { school_name },
+        });
+
+        if (!school) {
+          return {
+            status: StatusCodes.BAD_REQUEST,
+            message: "School not found",
+          };
+        }
+      } else {
+        school = await schoolRepo.findOne({
+          where: { id: user.school_id! },
+        });
+      }
 
       if (!school) {
         return {
@@ -38,7 +65,7 @@ const teacherService = {
         name,
         email,
         subject,
-        school: school,
+        school,
       });
 
       const savedTeacher = await teacherRepo.save(teacher);
@@ -56,11 +83,26 @@ const teacherService = {
     }
   },
 
-  async getAllTeachers(): Promise<IApiResponse> {
+  // ✅ GET ALL (FILTERED)
+  async getAllTeachers(user: {
+    role: string;
+    school_id: number | null;
+  }): Promise<IApiResponse> {
     try {
-      const teachers = await teacherRepo.find({
-        relations: ["school", "sections"],
-      });
+      let teachers;
+
+      if (user.role === UserRole.SUPER_ADMIN) {
+        teachers = await teacherRepo.find({
+          relations: ["school", "sections"],
+        });
+      } else {
+        teachers = await teacherRepo.find({
+          where: {
+            school: { id: user.school_id! },
+          },
+          relations: ["school", "sections"],
+        });
+      }
 
       return {
         status: StatusCodes.OK,
@@ -75,7 +117,11 @@ const teacherService = {
     }
   },
 
-  async getTeacherById(id: number): Promise<IApiResponse> {
+  // ✅ GET BY ID
+  async getTeacherById(
+    id: number,
+    user: { role: string; school_id: number | null },
+  ): Promise<IApiResponse> {
     try {
       const teacher = await teacherRepo.findOne({
         where: { id },
@@ -86,6 +132,17 @@ const teacherService = {
         return {
           status: StatusCodes.NOT_FOUND,
           message: "Teacher not found",
+        };
+      }
+
+      // 🔥 SCHOOL CHECK
+      if (
+        user.role !== UserRole.SUPER_ADMIN &&
+        teacher.school.id !== user.school_id
+      ) {
+        return {
+          status: StatusCodes.UNAUTHORIZED,
+          message: "You cannot access this teacher",
         };
       }
 
@@ -102,10 +159,16 @@ const teacherService = {
     }
   },
 
-  async updateTeacher(id: number, body: any): Promise<IApiResponse> {
+  // ✅ UPDATE
+  async updateTeacher(
+    id: number,
+    body: any,
+    user: { role: string; school_id: number | null },
+  ): Promise<IApiResponse> {
     try {
       const teacher = await teacherRepo.findOne({
         where: { id },
+        relations: ["school"],
       });
 
       if (!teacher) {
@@ -115,14 +178,18 @@ const teacherService = {
         };
       }
 
-      if (!Object.keys(body).length) {
-        return {
-          status: StatusCodes.BAD_REQUEST,
-          message: "No data provided to update",
-        };
+      if (user.role === UserRole.SCHOOL_ADMIN) {
+        // School admin can only update their own teacher
+        if (teacher.school.id !== user.school_id) {
+          return {
+            status: StatusCodes.UNAUTHORIZED,
+            message: "You cannot update this teacher",
+          };
+        }
       }
 
-      if (body.school_name) {
+      // SUPER_ADMIN can update any teacher and can change school
+      if (user.role === UserRole.SUPER_ADMIN && body.school_name) {
         const school = await schoolRepo.findOne({
           where: { school_name: body.school_name },
         });
@@ -155,16 +222,32 @@ const teacherService = {
     }
   },
 
-  async deleteTeacher(id: number): Promise<IApiResponse> {
+  // ✅ DELETE
+  async deleteTeacher(
+    id: number,
+    user: { role: string; school_id: number | null },
+  ): Promise<IApiResponse> {
     try {
       const teacher = await teacherRepo.findOne({
         where: { id },
+        relations: ["school"],
       });
 
       if (!teacher) {
         return {
           status: StatusCodes.NOT_FOUND,
           message: "Teacher not found",
+        };
+      }
+
+      // 🔥 SCHOOL CHECK
+      if (
+        user.role !== UserRole.SUPER_ADMIN &&
+        teacher.school.id !== user.school_id
+      ) {
+        return {
+          status: StatusCodes.UNAUTHORIZED,
+          message: "You cannot delete this teacher",
         };
       }
 

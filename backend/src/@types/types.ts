@@ -14,7 +14,7 @@ export interface IUser {
   email: string;
   password: string;
   school_name: string;
-  role?: "admin" | "teacher";
+  role?: "SCHOOL_ADMIN" | "SUPER_ADMIN";
 }
 
 export interface IClass {

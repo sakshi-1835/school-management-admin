@@ -15,6 +15,8 @@ interface SectionType {
 interface Props {
   selectedClass: number | null;
   selectedSection: number | null;
+
+  selectedSchool: string;
   onClassChange: (value: number | null) => void;
   onSectionChange: (value: number | null) => void;
 }
@@ -22,16 +24,39 @@ interface Props {
 const FilterBar = ({
   selectedClass,
   selectedSection,
+  selectedSchool,
   onClassChange,
   onSectionChange,
 }: Props) => {
   const [classes, setClasses] = useState<ClassType[]>([]);
   const [sections, setSections] = useState<SectionType[]>([]);
 
+  const role = localStorage.getItem("role");
+  const schoolId = Number(localStorage.getItem("school_id"));
+
+  const getParams = () => {
+    const params: any = {};
+
+    if (role === "SUPER_ADMIN") {
+      if (!selectedSchool) return null;
+      params.school_id = selectedSchool;
+    }
+
+    if (role === "SCHOOL_ADMIN") {
+      params.school_id = schoolId;
+    }
+
+    return params;
+  };
+
   // Get all classes
   const getClasses = async () => {
     try {
-      const res: any = await http.get(endPoints.classes.getAll);
+      const params = getParams();
+      if (!params) return;
+      const res: any = await http.get(endPoints.classes.getAll, {
+        params,
+      });
       setClasses(res.data || []);
     } catch (err) {
       console.error(err);
@@ -57,7 +82,7 @@ const FilterBar = ({
 
   useEffect(() => {
     getClasses();
-  }, []);
+  }, [selectedSchool]);
 
   useEffect(() => {
     getSections(selectedClass);

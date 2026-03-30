@@ -54,49 +54,90 @@ const studentService = {
     }
   },
 
-  async getAllStudents(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<IApiResponse> {
-    try {
-      const [students, total] = await studentRepo.findAndCount({
-        relations: ["classObj", "section"],
-        skip: (page - 1) * limit,
-        take: limit,
-        order: {
-          classObj: { id: "ASC" },
-          section: { id: "ASC" },
-        },
-      });
+   async getAllStudents(
+  user: { role: string; school_id: number | null },
+  page: number = 1,
+  limit: number = 10,
+  school_id?: number,
+  classId?: number,
+  sectionId?: number
+): Promise<IApiResponse> {
+  try {
+    const where: any = {};
 
-      const formatted = students.map((st) => ({
-        id: st.id,
-        name: st.name,
-        age: st.age,
-        class_name: st.classObj.class_name,
-        section_name: st.section.section_name,
-      }));
-
-      return {
-        status: StatusCodes.OK,
-        message: "Students retrieved successfully",
-        data: {
-          students: formatted,
-          pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-          },
+    // 🏫 SCHOOL ADMIN → always own school
+    if (user.role === "SCHOOL_ADMIN") {
+      where.classObj = {
+        school: {
+          id: user.school_id,
         },
-      };
-    } catch (error: any) {
-      return {
-        status: StatusCodes.INTERNAL_SERVER_ERROR,
-        message: error?.message || "Internal server error",
       };
     }
-  },
+
+    // 👑 SUPER ADMIN → filter by selected school
+    if (user.role === "SUPER_ADMIN" && school_id) {
+      where.classObj = {
+        school: {
+          id: school_id,
+        },
+      };
+    }
+
+    // 🎯 Class filter
+    if (classId) {
+      where.classObj = {
+        ...(where.classObj || {}),
+        id: classId,
+      };
+    }
+
+    // 🎯 Section filter
+    if (sectionId) {
+      where.section = {
+        id: sectionId,
+      };
+    }
+
+    const [students, total] = await studentRepo.findAndCount({
+      where,
+      relations: ["classObj", "section", "classObj.school"],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: {
+        classObj: { id: "ASC" },
+        section: { id: "ASC" },
+      },
+    });
+
+    const formatted = students.map((st) => ({
+      id: st.id,
+      name: st.name,
+      age: st.age,
+      class_name: st.classObj?.class_name || "N/A",
+      section_name: st.section?.section_name || "N/A",
+      school_name: st.classObj?.school?.school_name || "N/A",
+    }));
+
+    return {
+      status: StatusCodes.OK,
+      message: "Students retrieved successfully",
+      data: {
+        students: formatted,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+    };
+  } catch (error: any) {
+    return {
+      status: StatusCodes.INTERNAL_SERVER_ERROR,
+      message: error?.message || "Internal server error",
+    };
+  }
+},
 
   async getStudents(classId: number, sectionId: number): Promise<IApiResponse> {
     try {

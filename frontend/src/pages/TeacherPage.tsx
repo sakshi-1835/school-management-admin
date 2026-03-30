@@ -7,9 +7,7 @@ const TeachersPage = () => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [schools, setSchools] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -19,11 +17,12 @@ const TeachersPage = () => {
     subject: "",
     school_name: "",
   });
-
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // ================= API =================
+  const role = localStorage.getItem("role") || "";
+  const school_id = localStorage.getItem("school_id") || "";
 
+  // ================= API =================
   const getTeachers = async () => {
     try {
       const res = await http.get(endPoints.teachers.getAll);
@@ -49,7 +48,15 @@ const TeachersPage = () => {
     getSchools();
   }, []);
 
-  // close dropdown on outside click
+  useEffect(() => {
+    if (role === "SCHOOL_ADMIN" && schools.length > 0) {
+      const mySchool = schools.find((s) => s.id === Number(school_id));
+      if (mySchool) {
+        setForm((prev) => ({ ...prev, school_name: mySchool.school_name }));
+      }
+    }
+  }, [schools]);
+
   useEffect(() => {
     const close = () => setOpenMenuId(null);
     document.addEventListener("click", close);
@@ -57,7 +64,6 @@ const TeachersPage = () => {
   }, []);
 
   // ================= HANDLERS =================
-
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -67,7 +73,9 @@ const TeachersPage = () => {
       name: "",
       email: "",
       subject: "",
-      school_name: "",
+      school_name: role === "SCHOOL_ADMIN"
+        ? schools.find((s) => s.id === Number(school_id))?.school_name || ""
+        : "",
     });
     setEditingId(null);
   };
@@ -75,14 +83,18 @@ const TeachersPage = () => {
   // CREATE
   const handleAddTeacher = async () => {
     const { name, email, subject, school_name } = form;
-
     if (!name || !email || !subject || !school_name) {
       alert("All fields required");
       return;
     }
 
     try {
-      await http.post(endPoints.teachers.create, form);
+      await http.post(endPoints.teachers.create, form, {
+        headers: {
+          "x-role": role,
+          "x-school-id": school_id,
+        },
+      });
       alert("Teacher added!");
       setShowAddModal(false);
       resetForm();
@@ -111,7 +123,14 @@ const TeachersPage = () => {
     try {
       await http.put(
         endPoints.teachers.update.replace(":id", String(editingId)),
-        form
+        form,
+        {
+          headers: {
+            "x-role": localStorage.getItem("role") || "",
+            "x-school-id": localStorage.getItem("school_id") || "",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        },
       );
       alert("Updated!");
       setShowEditModal(false);
@@ -125,11 +144,13 @@ const TeachersPage = () => {
   // DELETE
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this teacher?")) return;
-
     try {
-      await http.delete(
-        endPoints.teachers.delete.replace(":id", String(id))
-      );
+      await http.delete(endPoints.teachers.delete.replace(":id", String(id)), {
+        headers: {
+          "x-role": role,
+          "x-school-id": school_id,
+        },
+      });
       setTeachers((prev) => prev.filter((t) => t.id !== id));
     } catch (err: any) {
       alert(err.response?.data?.message || "Delete failed");
@@ -144,7 +165,6 @@ const TeachersPage = () => {
         {/* HEADER */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Teachers</h1>
-
           <button
             onClick={() => {
               resetForm();
@@ -178,17 +198,13 @@ const TeachersPage = () => {
                     <td className="p-3">{t.name}</td>
                     <td className="p-3">{t.email}</td>
                     <td className="p-3">{t.subject}</td>
-                    <td className="p-3">
-                      {t.school?.school_name || "-"}
-                    </td>
+                    <td className="p-3">{t.school?.school_name || "-"}</td>
 
                     <td className="p-3 text-center relative overflow-visible">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenMenuId(
-                            openMenuId === t.id ? null : t.id
-                          );
+                          setOpenMenuId(openMenuId === t.id ? null : t.id);
                         }}
                       >
                         ⋮
@@ -242,6 +258,7 @@ const TeachersPage = () => {
             title="Add Teacher"
             form={form}
             schools={schools}
+            role={role}
             onChange={handleChange}
             onClose={() => setShowAddModal(false)}
             onSubmit={handleAddTeacher}
@@ -254,6 +271,7 @@ const TeachersPage = () => {
             title="Edit Teacher"
             form={form}
             schools={schools}
+            role={role}
             onChange={handleChange}
             onClose={() => setShowEditModal(false)}
             onSubmit={handleUpdate}
@@ -267,18 +285,48 @@ const TeachersPage = () => {
 export default TeachersPage;
 
 // ================= MODAL =================
-
-const Modal = ({ title, form, schools, onChange, onClose, onSubmit }: any) => {
+const Modal = ({
+  title,
+  form,
+  schools,
+  role,
+  onChange,
+  onClose,
+  onSubmit,
+}: any) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
       <div className="bg-white p-6 rounded-xl w-80">
         <h2 className="font-bold mb-3">{title}</h2>
 
-        <input name="name" value={form.name} onChange={onChange} placeholder="Name" className="w-full border p-2 mb-2 rounded" />
-        <input name="email" value={form.email} onChange={onChange} placeholder="Email" className="w-full border p-2 mb-2 rounded" />
-        <input name="subject" value={form.subject} onChange={onChange} placeholder="Subject" className="w-full border p-2 mb-2 rounded" />
+        <input
+          name="name"
+          value={form.name}
+          onChange={onChange}
+          placeholder="Name"
+          className="w-full border p-2 mb-2 rounded"
+        />
+        <input
+          name="email"
+          value={form.email}
+          onChange={onChange}
+          placeholder="Email"
+          className="w-full border p-2 mb-2 rounded"
+        />
+        <input
+          name="subject"
+          value={form.subject}
+          onChange={onChange}
+          placeholder="Subject"
+          className="w-full border p-2 mb-2 rounded"
+        />
 
-        <select name="school_name" value={form.school_name} onChange={onChange} className="w-full border p-2 mb-3 rounded">
+        <select
+          name="school_name"
+          value={form.school_name}
+          onChange={onChange}
+          className="w-full border p-2 mb-3 rounded" 
+        >
           <option value="">Select School</option>
           {schools.map((s: any) => (
             <option key={s.id} value={s.school_name}>
@@ -291,7 +339,10 @@ const Modal = ({ title, form, schools, onChange, onClose, onSubmit }: any) => {
           <button onClick={onClose} className="bg-gray-300 px-3 py-1 rounded">
             Cancel
           </button>
-          <button onClick={onSubmit} className="bg-blue-500 text-white px-3 py-1 rounded">
+          <button
+            onClick={onSubmit}
+            className="bg-blue-500 text-white px-3 py-1 rounded"
+          >
             Save
           </button>
         </div>

@@ -1,3 +1,4 @@
+// services/dashboardService.ts
 import { StatusCodes } from "../@types/enum";
 import { IApiResponse } from "../@types/types";
 import AppDataSource from "../config/data-source";
@@ -10,15 +11,17 @@ const classRepo = AppDataSource.getRepository(Class);
 const sectionRepo = AppDataSource.getRepository(Section);
 
 const dashboardServices = {
-  async getDashboardData(): Promise<IApiResponse> {
+  async getDashboardData(school_id?: number): Promise<IApiResponse> {
     try {
-      // ✅ parallel execution (faster 🚀)
-      const [totalStudents, totalClasses, totalSections] =
-        await Promise.all([
-          studentRepo.count(),
-          classRepo.count(),
-          sectionRepo.count(),
-        ]);
+      const studentQuery = school_id ? { where: { school: { id: school_id } } } : {};
+      const classQuery = school_id ? { where: { school: { id: school_id } } } : {};
+      const sectionQuery = school_id ? { where: { school: { id: school_id } } } : {};
+
+      const [totalStudents, totalClasses, totalSections] = await Promise.all([
+        studentRepo.count(studentQuery),
+        classRepo.count(classQuery),
+        sectionRepo.count(sectionQuery),
+      ]);
 
       return {
         status: StatusCodes.OK,

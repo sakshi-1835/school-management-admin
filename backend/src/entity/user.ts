@@ -7,6 +7,11 @@ import {
 } from "typeorm";
 import { School } from "./school";
 
+export enum UserRole {
+  SUPER_ADMIN = "SUPER_ADMIN",
+  SCHOOL_ADMIN = "SCHOOL_ADMIN",
+}
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -21,12 +26,17 @@ export class User {
   @Column()
   password!: string;
 
-  @Column({ default: "admin" })
-  role!: string;
+  @Column({
+    type: "enum",
+    enum: UserRole,
+    default: UserRole.SCHOOL_ADMIN,
+  })
+  role!: UserRole;
 
   @ManyToOne(() => School, (school) => school.users, {
+    nullable: true,
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "school_name" })
-  school!: School;
+  school!: School | null;
 }

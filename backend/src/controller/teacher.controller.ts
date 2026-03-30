@@ -2,11 +2,19 @@ import { Request, Response } from "express";
 import teacherService from "../services/teacher.service";
 import { StatusCodes } from "../@types/enum";
 
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
 const teacherController = {
   // ✅ CREATE TEACHER
   async createTeacher(req: Request, res: Response) {
     try {
-      const result = await teacherService.createTeacher(req.body);
+      const result = await teacherService.createTeacher(req.body, req.user);
       return res.status(result.status).json(result);
     } catch (error: any) {
       return res
@@ -18,7 +26,7 @@ const teacherController = {
   // ✅ GET ALL TEACHERS
   async getAllTeachers(req: Request, res: Response) {
     try {
-      const result = await teacherService.getAllTeachers();
+      const result = await teacherService.getAllTeachers(req.user);
       return res.status(result.status).json(result);
     } catch (error: any) {
       return res
@@ -32,7 +40,7 @@ const teacherController = {
     try {
       const id = Number(req.params.id);
 
-      const result = await teacherService.getTeacherById(id);
+      const result = await teacherService.getTeacherById(id, req.user);
       return res.status(result.status).json(result);
     } catch (error: any) {
       return res
@@ -46,7 +54,7 @@ const teacherController = {
     try {
       const id = Number(req.params.id);
 
-      const result = await teacherService.updateTeacher(id, req.body);
+      const result = await teacherService.updateTeacher(id, req.body, req.user);
       return res.status(result.status).json(result);
     } catch (error: any) {
       return res
@@ -60,7 +68,7 @@ const teacherController = {
     try {
       const id = Number(req.params.id);
 
-      const result = await teacherService.deleteTeacher(id);
+      const result = await teacherService.deleteTeacher(id, req.user);
       return res.status(result.status).json(result);
     } catch (error: any) {
       return res
