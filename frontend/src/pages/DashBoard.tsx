@@ -18,12 +18,13 @@ const DashBoard = () => {
 
   const [students, setStudents] = useState<Student[]>([]);
   const [schools, setSchools] = useState<any[]>([]);
-  const [selectedSchool, setSelectedSchool] = useState<string>("");
+  const [classes, setClasses] = useState<any[]>([]); 
+  const [selectedSchool, setSelectedSchool] = useState<string>(schoolId); 
+  const [selectedClass, setSelectedClass] = useState<number | null>(null);
+  const [selectedSection, setSelectedSection] = useState<number | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [selectedClass, setSelectedClass] = useState<number | null>(null);
-  const [selectedSection, setSelectedSection] = useState<number | null>(null);
 
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [stats, setStats] = useState({
@@ -36,8 +37,7 @@ const DashBoard = () => {
 
   const getParams = () => {
     const params: any = {};
-    if (role === "SCHOOL_ADMIN" && schoolId) params.school_id = schoolId;
-    else if (role === "SUPER_ADMIN" && selectedSchool)
+    if ((role === "SCHOOL_ADMIN" || role === "SUPER_ADMIN") && selectedSchool)
       params.school_id = selectedSchool;
 
     if (selectedClass) params.classId = selectedClass;
@@ -45,13 +45,27 @@ const DashBoard = () => {
 
     return params;
   };
+
   const getSchools = async () => {
     try {
       const res = await http.get(endPoints.school.getAll);
       setSchools(res.data);
       setStats((prev) => ({ ...prev, totalSchools: res?.data.length || 0 }));
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching schools", err);
+    }
+  };
+
+  const getClasses = async (school_id?: string) => {
+    if (!school_id) return;
+    try {
+      const res = await http.get(endPoints.classes.getAll, {
+        params: { school_id },
+      });
+      setClasses(res.data || []);
+    } catch (err) {
+      console.error("Error fetching classes", err);
+      setClasses([]);
     }
   };
 
@@ -59,9 +73,7 @@ const DashBoard = () => {
     try {
       setLoading(true);
       const params = getParams();
-      const res = await http.get(endPoints.dashBoard.getData, {
-        params: params || {},
-      });
+      const res = await http.get(endPoints.dashBoard.getData, { params });
 
       const data = res.data;
 
@@ -78,12 +90,10 @@ const DashBoard = () => {
     }
   };
 
-  // 🔹 Fetch students
   const getStudents = async () => {
     try {
       const params = getParams();
       if (!params) return;
-      
 
       const res = await http.get(endPoints.students.getAll, { params });
 
@@ -103,16 +113,23 @@ const DashBoard = () => {
   };
 
   useEffect(() => {
-    if (role === "SUPER_ADMIN") {
-      getSchools();
+    if (modalOpen && selectedSchool) {
+      getClasses(selectedSchool);
     }
+  }, [modalOpen, selectedSchool]);
+
+  useEffect(() => {
+    if (role === "SUPER_ADMIN") getSchools();
+    if (role === "SCHOOL_ADMIN" && schoolId) getClasses(schoolId);
   }, []);
 
   useEffect(() => {
+    if (selectedSchool) getClasses(selectedSchool);
     getDashboardData();
     getStudents();
   }, [selectedSchool, selectedClass, selectedSection]);
 
+  // 🔹 Handlers
   const handleAddStudent = () => {
     setSelectedStudent(null);
     setModalOpen(true);
@@ -133,7 +150,7 @@ const DashBoard = () => {
     }
   };
 
-   const handleSelect = (student: any) => {
+  const handleSelect = (student: any) => {
     setSelectedClass(null);
     setSelectedSection(null);
     setStudents([
@@ -154,10 +171,9 @@ const DashBoard = () => {
       const payload: any = {
         name: data.name,
         age: data.age ? Number(data.age) : undefined,
+        class_id: data.class_id ? Number(data.class_id) : undefined,
+        school_id: selectedSchool ? Number(selectedSchool) : undefined
       };
-
-      if (!id) payload.class_id = Number(data.class_id);
-      if (id && data.class_id) payload.class_id = Number(data.class_id);
 
       if (id) {
         await http.put(
@@ -193,26 +209,24 @@ const DashBoard = () => {
               {role === "SUPER_ADMIN" && (
                 <StateCard title="Total Schools" value={stats.totalSchools} />
               )}
-
               <StateCard title="Total Students" value={stats.totalStudents} />
-
               <StateCard
                 title="Classes"
                 value={stats.totalClasses}
                 onClick={() => navigate("/classes")}
               />
-
               <StateCard title="Sections" value={stats.totalSections} />
             </div>
           )}
         </div>
 
-        {/* School Filter (SUPER ADMIN) */}
+        {/* School Filter */}
         {role === "SUPER_ADMIN" && (
           <div className="mb-4">
             <select
               className="p-2 border rounded"
               onChange={(e) => setSelectedSchool(e.target.value)}
+              value={selectedSchool}
             >
               <option value="">Select School</option>
               {schools.map((s) => (
@@ -224,8 +238,7 @@ const DashBoard = () => {
           </div>
         )}
 
-        {/* Search */}
-        <SearchBar onSelect={handleSelect} onClear={ getStudents} />
+        <SearchBar selectedSchool={selectedSchool} onSelect={handleSelect} onClear={getStudents} />
 
         <button
           onClick={handleAddStudent}
@@ -243,21 +256,20 @@ const DashBoard = () => {
           selectedSchool={selectedSchool}
         />
 
-        {/* Table */}
         <StudentsTable
           students={students}
           pagination={pagination}
           onEdit={handleEditStudent}
           onDelete={handleDeleteStudent}
-          onPageChange={() => getStudents()}
+          onPageChange={getStudents}
         />
 
-        {/* Modal */}
         {modalOpen && (
           <StudentFormModal
             student={selectedStudent}
             onClose={() => setModalOpen(false)}
             onSubmit={handleSubmitStudent}
+            selectedSchool={selectedSchool}
           />
         )}
       </div>

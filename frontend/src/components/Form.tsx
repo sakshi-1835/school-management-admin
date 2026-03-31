@@ -7,9 +7,10 @@ interface Props {
   student: any | null;
   onClose: () => void;
   onSubmit: (data: any, id?: number) => void;
+  selectedSchool: string;
 }
 
-const StudentFormModal: React.FC<Props> = ({ student, onClose, onSubmit }) => {
+const StudentFormModal: React.FC<Props> = ({ student, onClose, onSubmit , selectedSchool }) => {
   const {
     register,
     handleSubmit,
@@ -21,7 +22,11 @@ const StudentFormModal: React.FC<Props> = ({ student, onClose, onSubmit }) => {
 
   const getClasses = async () => {
     try {
-      const res = await http.get(endPoints.classes.getAll);
+     if (!selectedSchool) return; 
+
+    const res = await http.get(endPoints.classes.getAll, {
+      params: { school_id: selectedSchool }, 
+    });
       setClasses(res.data);
     } catch (err) {
       console.error("Error fetching classes", err);
@@ -30,7 +35,7 @@ const StudentFormModal: React.FC<Props> = ({ student, onClose, onSubmit }) => {
 
   useEffect(() => {
     getClasses();
-  }, []);
+  }, [selectedSchool]);
 
   useEffect(() => {
     if (student) {

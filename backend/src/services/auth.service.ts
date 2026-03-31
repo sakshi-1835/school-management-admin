@@ -150,6 +150,7 @@ const authService = {
             name: existing.name,
             email: existing.email,
             role: existing.role,
+            school_id: existing.school?.id || null,
             school_name: existing.school?.school_name || null,
           },
         },

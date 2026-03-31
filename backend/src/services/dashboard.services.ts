@@ -13,9 +13,18 @@ const sectionRepo = AppDataSource.getRepository(Section);
 const dashboardServices = {
   async getDashboardData(school_id?: number): Promise<IApiResponse> {
     try {
-      const studentQuery = school_id ? { where: { school: { id: school_id } } } : {};
-      const classQuery = school_id ? { where: { school: { id: school_id } } } : {};
-      const sectionQuery = school_id ? { where: { school: { id: school_id } } } : {};
+      
+      const studentQuery = school_id
+        ? { where: { school: { id: school_id } } }
+        : {};
+
+      const classQuery = school_id
+        ? { where: { school: { id: school_id } } }
+        : {};
+
+      const sectionQuery = school_id
+        ? { where: { classObj: { school: { id: school_id } } } }
+        : {};
 
       const [totalStudents, totalClasses, totalSections] = await Promise.all([
         studentRepo.count(studentQuery),

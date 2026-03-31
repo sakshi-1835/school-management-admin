@@ -22,30 +22,25 @@ const Login = () => {
   };
 
   const handleLogin = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await http.post(endPoints.auth.login, form);
-    const { token, user } = res.data;
+      const res = await http.post(endPoints.auth.login, form);
+      const { token, user } = res.data;
 
-    console.log("LOGIN SUCCESS");
-
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", user.role);
-
-    alert("Login Successful");
-
-    console.log("BEFORE NAVIGATE");
-
-    navigate("/dashboard");
-
-    console.log("AFTER NAVIGATE"); // 👈 ye print hona chahiye
-  } catch (err: any) {
-    alert(err.response?.data?.message || "Login failed");
-  } finally {
-    setLoading(false);
-  }
-};
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", user.role);
+      if (user.school_id) {
+        localStorage.setItem("school_id", user.school_id.toString());
+      }
+      console.log(user.school_id)
+      navigate("/dashboard");
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <Authcard title="Login">
       <input

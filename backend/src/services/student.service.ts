@@ -271,35 +271,42 @@ const studentService = {
     }
   },
 
-  async searchStudent(query: string): Promise<IApiResponse> {
+  async searchStudent(query: string , school_id?: string): Promise<IApiResponse> {
     try {
       if (!query) {
-        return {
-          status: StatusCodes.BAD_REQUEST,
-          message: "Search query is required",
-        };
-      }
-
-      const students = await studentRepo.find({
-        where: {
-          name: Like(`%${query}%`),
-        },
-        relations: ["classObj", "section"],
-      });
-
-      const formattedData = students.map((s) => ({
-        id: s.id,
-        name: s.name,
-        age: s.age,
-        class: s.classObj?.class_name,
-        section: s.section?.section_name,
-      }));
-
       return {
-        status: StatusCodes.OK,
-        message: "Students fetched successfully",
-        data: formattedData,
+        status: StatusCodes.BAD_REQUEST,
+        message: "Search query is required",
       };
+    }
+
+    const whereClause: any = {
+      name: Like(`%${query}%`),
+    };
+
+    if (school_id) {
+      whereClause.classObj = { school: { id: Number(school_id) } };
+    }
+
+    const students = await studentRepo.find({
+      where: whereClause,
+      relations: ["classObj", "section", "classObj.school"],
+    });
+
+    const formattedData = students.map((s) => ({
+      id: s.id,
+      name: s.name,
+      age: s.age,
+      class: s.classObj?.class_name,
+      section: s.section?.section_name,
+      school: s.classObj?.school?.school_name,
+    }));
+
+    return {
+      status: StatusCodes.OK,
+      message: "Students fetched successfully",
+      data: formattedData,
+    };
     } catch (error: any) {
       return {
         status: StatusCodes.INTERNAL_SERVER_ERROR,

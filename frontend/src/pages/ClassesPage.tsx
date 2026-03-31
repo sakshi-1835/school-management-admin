@@ -3,6 +3,9 @@ import Sidebar from "../components/Sidebar";
 import http from "../api/http";
 import endPoints from "../api/endpoints";
 import StudentTable from "../components/classPage/StudentList";
+import EditSectionModal from "../components/EditSectionModal";
+import EditClassModal from "../components/EditClassModal";
+import AddClassModal from "../components/AddClassModal";
 
 const ClassesPage = () => {
   const [classes, setClasses] = useState<any[]>([]);
@@ -64,7 +67,6 @@ const ClassesPage = () => {
 
   // Fetch schools
   const getSchools = async () => {
-    if (role === "SCHOOL_ADMIN") return;
 
     try {
       const res = await http.get(endPoints.school.getAll);
@@ -125,6 +127,18 @@ const ClassesPage = () => {
       document.removeEventListener("click", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (role === "SCHOOL_ADMIN" && schoolId && schools.length) {
+      const matchedSchool = schools.find(
+        (s: any) => String(s.id) === String(schoolId),
+      );
+
+      if (matchedSchool) {
+        setSchoolName(matchedSchool.school_name);
+      }
+    }
+  }, [role, schoolId, schools]);
 
   // Open Edit Modal
   const handleEditClass = (cls: any) => {
@@ -252,17 +266,14 @@ const ClassesPage = () => {
       class_name: className,
     };
 
-    if (role === "SUPER_ADMIN") {
+    if (role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN") {
       payload.school_name = schoolName;
     } else {
       payload.school_id = schoolId;
     }
 
     try {
-      await http.post(endPoints.classes.create, {
-        class_name: className,
-        school_name: schoolName,
-      });
+      await http.post(endPoints.classes.create, payload);
       alert("Class added successfully!");
       setShowAddClassModal(false);
       setClassName("");
@@ -282,8 +293,6 @@ const ClassesPage = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Classes</h1>
 
-         
-
           <button
             onClick={() => setShowAddClassModal(true)}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
@@ -291,30 +300,27 @@ const ClassesPage = () => {
             + Add Class
           </button>
         </div>
-        {/* MESSAGE */}
-          {role === "SUPER_ADMIN" && !selectedSchool && (
-            <p className="text-gray-500 mb-4">
-              👉 Please select a school to view classes
-            </p>
-          )}
-         {role === "SUPER_ADMIN" && (
-            <div className="mb-4">
-              <select
-                value={selectedSchool}
-                onChange={(e) => setSelectedSchool(e.target.value)}
-                className="border p-2 rounded"
-              >
-                <option value="">Select School</option>
-                {schools.map((s: any) => (
-                  <option key={s.id} value={s.id}>
-                    {s.school_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          
+        {role === "SUPER_ADMIN" && !selectedSchool && (
+          <p className="text-gray-500 mb-4">
+            Please select a school to view classes
+          </p>
+        )}
+        {role === "SUPER_ADMIN" && (
+          <div className="mb-4">
+            <select
+              value={selectedSchool}
+              onChange={(e) => setSelectedSchool(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="">Select School</option>
+              {schools.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.school_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <p>Loading...</p>
@@ -463,142 +469,44 @@ const ClassesPage = () => {
           </div>
         )}
 
-        {/* Add Class Modal */}
         {showAddClassModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
-            <div className="bg-white p-6 rounded-xl shadow-lg w-80">
-              <h2 className="font-bold mb-3 text-lg">Add Class</h2>
-
-              <input
-                value={className}
-                onChange={(e) => setClassName(e.target.value)}
-                placeholder="Enter class name"
-                className="w-full border p-2 mb-3 rounded"
-              />
-
-              {role === "SUPER_ADMIN" && (
-                <select
-                  value={schoolName}
-                  onChange={(e) => setSchoolName(e.target.value)}
-                  className="w-full border p-2 mb-3 rounded"
-                >
-                  <option value="">Select School</option>
-                  {schools.map((school: any) => (
-                    <option key={school.id} value={school.school_name}>
-                      {school.school_name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setShowAddClassModal(false)}
-                  className="px-3 py-1 bg-gray-300 rounded"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleAddClass}
-                  className="px-3 py-1 bg-blue-500 text-white rounded"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
+          <AddClassModal
+            visible={showAddClassModal}
+            onClose={() => setShowAddClassModal(false)}
+            onSubmit={handleAddClass}
+            className={className}
+            setClassName={setClassName}
+            schoolName={schoolName}
+            setSchoolName={setSchoolName}
+            schools={schools}
+            role={role}
+          />
         )}
 
         {showEditClassModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
-            <div className="bg-white p-6 rounded-xl shadow-lg w-80">
-              <h2 className="font-bold mb-3 text-lg">Edit Class</h2>
-
-              <input
-                value={className}
-                onChange={(e) => setClassName(e.target.value)}
-                placeholder="Enter class name"
-                className="w-full border p-2 mb-3 rounded"
-              />
-
-              <select
-                value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
-                className="w-full border p-2 mb-3 rounded"
-              >
-                <option value="">Select School</option>
-                {schools.map((school: any) => (
-                  <option key={school.id} value={school.school_name}>
-                    {school.school_name}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setShowEditClassModal(false)}
-                  className="px-3 py-1 bg-gray-300 rounded"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleUpdateClass}
-                  className="px-3 py-1 bg-blue-500 text-white rounded"
-                >
-                  Update
-                </button>
-              </div>
-            </div>
-          </div>
+          <EditClassModal
+            visible={showEditClassModal}
+            onClose={() => setShowEditClassModal(false)}
+            onSubmit={handleUpdateClass}
+            className={className}
+            setClassName={setClassName}
+            schoolName={schoolName}
+            setSchoolName={setSchoolName}
+            schools={schools}
+          />
         )}
 
-        {/* Edit Section Modal */}
         {showEditSectionModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
-            <div className="bg-white p-6 rounded-xl shadow-lg w-80">
-              <h2 className="font-bold mb-3 text-lg">Edit Section</h2>
-
-              {/* Section Name */}
-              <input
-                value={sectionName}
-                onChange={(e) => setSectionName(e.target.value)}
-                placeholder="Section name"
-                className="w-full border p-2 mb-3 rounded"
-              />
-
-              {/* Teacher */}
-              <select
-                value={selectedTeacherId || ""}
-                onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
-                className="w-full border p-2 mb-3 rounded"
-              >
-                <option value="">Select Teacher</option>
-                {teachers.map((teacher: any) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.name}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setShowEditSectionModal(false)}
-                  className="px-3 py-1 bg-gray-300 rounded"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleUpdateSection}
-                  className="px-3 py-1 bg-blue-500 text-white rounded"
-                >
-                  Update
-                </button>
-              </div>
-            </div>
-          </div>
+          <EditSectionModal
+            visible={showEditSectionModal}
+            onClose={() => setShowEditSectionModal(false)}
+            onSubmit={handleUpdateSection}
+            sectionName={sectionName}
+            setSectionName={setSectionName}
+            teachers={teachers}
+            selectedTeacherId={selectedTeacherId}
+            setSelectedTeacherId={setSelectedTeacherId}
+          />
         )}
       </div>
     </div>

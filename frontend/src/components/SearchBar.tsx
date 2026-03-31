@@ -10,44 +10,53 @@ interface StudentOption {
 }
 
 interface Props {
+  selectedSchool: string;
   onSelect: (student: Student) => void;
   onClear: () => void;
 }
 
-const SearchBar = ({ onSelect, onClear }: Props) => {
+const SearchBar = ({ selectedSchool, onSelect, onClear }: Props) => {
   const [search, setSearch] = useState("");
   const [options, setOptions] = useState<StudentOption[]>([]);
   const [loading, setLoading] = useState(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<any>(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  // ✅ Use useRef for debounce
+  const debounceRef = useRef<number | null>(null);
 
+  // ✅ Click outside to close dropdown
+  const wrapperRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handleClickOutside = (event: any) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShowDropdown(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ✅ Fetch students from API
   const fetchStudents = async (value: string) => {
+    const schoolId = selectedSchool || localStorage.getItem("school_id");
+
     if (!value.trim()) return;
+    if (!schoolId) return;
+
     try {
       setLoading(true);
-
-      const res: any = await http.get(
-        `${endPoints.students.search}?q=${value}`,
-      );
+      const res: any = await http.get(endPoints.students.search, {
+        params: {
+          q: value,
+          school_id: Number(schoolId),
+        },
+      });
 
       const list: Student[] = res.data || [];
 
       const newOptions: StudentOption[] = list.map((s) => ({
         value: s.id,
-        label: s.name,
+        label: `${s.name} `, // show school in dropdown
         data: s,
       }));
 
@@ -59,6 +68,7 @@ const SearchBar = ({ onSelect, onClear }: Props) => {
     }
   };
 
+  // ✅ Handle input changes with debounce
   const handleSearch = (value: string) => {
     setSearch(value);
     setShowDropdown(true);
@@ -69,19 +79,18 @@ const SearchBar = ({ onSelect, onClear }: Props) => {
       return;
     }
 
-    if (debounceTimeout) clearTimeout(debounceTimeout);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    const timeout = setTimeout(() => {
+    debounceRef.current = window.setTimeout(() => {
       fetchStudents(value);
     }, 500);
-
-    setDebounceTimeout(timeout);
   };
 
+  // ✅ Trigger search on Enter key
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      if (debounceTimeout) clearTimeout(debounceTimeout);
-      fetchStudents(search); 
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      fetchStudents(search);
     }
   };
 

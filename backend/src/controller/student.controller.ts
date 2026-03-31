@@ -30,7 +30,7 @@ const studentController = {
         : undefined;
 
       const result = await studentService.getAllStudents(
-        req.user, 
+        req.user,
         page,
         limit,
         school_id,
@@ -101,8 +101,12 @@ const studentController = {
 
   async searchStudent(req: Request, res: Response) {
     try {
-      const { q } = req.query;
-      const result = await studentService.searchStudent(q as string);
+      const { q, school_id } = req.query;
+
+      const result = await studentService.searchStudent(
+        q as string,
+        school_id as string | undefined,
+      );
       return res.status(result.status).json(result);
     } catch (error: any) {
       res
